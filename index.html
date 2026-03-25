@@ -660,6 +660,18 @@ const SUPABASE_URL = 'https://hpiyvnfhoqnnnotrmwaz.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwaXl2bmZob3Fubm5vdHJtd2F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzIwNDEsImV4cCI6MjA4ODA0ODA0MX0.AsGhYitkSnyVMwpJII05UseS_gICaXiCy7d8iHsr6Qw';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ─── Tag Icon Map (hardcoded because Supabase REST API mangles emoji) ───
+const TAG_ICONS = {
+  'finance':'💰','apartment':'🏠','carmei-gat':'🏠','health':'🏥','dating':'💑',
+  'work-clalit':'💼','work-petachya':'💼','career':'📚','personal':'📋',
+  'travel':'✈️','pesach':'🕎','family':'👨‍👩‍👧','phone-call':'📞','computer':'💻',
+  'errands':'🏃','at-clalit':'🏢','at-petachya':'🏢','at-home':'🏠','admin':'📝',
+  'accountant':'🧾','second-degree':'🎓','budget-app':'📊','ivchun':'📋',
+  'ef-app':'🧠','eforts':'📊','the-trail':'🔥','torah':'📖','writing':'✍️',
+  'usa-shopping':'🛒','merav':'👤','katya':'👤','reuben':'👤','marom':'👤','waiting':'⏳','test':'🧪'
+};
+function getTagIcon(name) { return TAG_ICONS[name] || ''; }
+
 // ─── State ───
 let tasks = [];
 let tagDefs = [];
@@ -908,7 +920,7 @@ function renderStreams(mc) {
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     const def = tagDefs.find(d => d.name === name);
     const color = def?.color || '';
-    const icon = def?.icon || '';
+    const icon = getTagIcon(name);
     const displayName = name === 'untagged' ? 'Untagged' : name;
 
     html += `<div class="stream-card" onclick="toggleStream(this)" data-stream="${esc(name)}">
@@ -1139,7 +1151,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
     const bgColor = def?.color ? def.color + '18' : '';
     const textColor = def?.color || '';
     const style = bgColor ? `style="background:${bgColor};color:${textColor}"` : '';
-    return `<span class="tag-pill" ${style}>${def?.icon || ''} ${esc(tag)}</span>`;
+    return `<span class="tag-pill" ${style}>${getTagIcon(tag)} ${esc(tag)}</span>`;
   }).join('');
 
   const checked = t.status === 'done' ? 'checked' : '';
@@ -1343,7 +1355,7 @@ function renderModalTags(selectedTags) {
     const active = selectedTags.includes(name);
     const def = tagDefs.find(d => d.name === name);
     return `<button class="modal-tag ${active ? 'active' : ''}" onclick="toggleModalTag(this, '${esc(name)}')">
-      ${def?.icon || ''} ${esc(name)}
+      ${getTagIcon(name)} ${esc(name)}
     </button>`;
   }).join('');
 
