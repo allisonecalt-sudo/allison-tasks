@@ -944,10 +944,16 @@ const TABS = [
 let allFilters = { search: '', tags: [], energy: null, status: null };
 
 // ─── Date Helpers ───
-function today() { return new Date().toISOString().slice(0, 10); }
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function today() { return localDateStr(new Date()); }
 function tomorrow() {
   const d = new Date(); d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 function daysAgo(dateStr) {
   const d = new Date(dateStr);
@@ -1131,7 +1137,7 @@ function renderCurrentTab() {
 function navigateDay(offset) {
   const d = new Date(viewingDate + 'T00:00:00');
   d.setDate(d.getDate() + offset);
-  viewingDate = d.toISOString().slice(0, 10);
+  viewingDate = localDateStr(d);
   renderCurrentTab();
 }
 function jumpToDay(dateStr) {
@@ -1158,7 +1164,7 @@ function getWeekDates(dateStr) {
   for (let i = 0; i < 7; i++) {
     const wd = new Date(sunday);
     wd.setDate(sunday.getDate() + i);
-    dates.push(wd.toISOString().slice(0, 10));
+    dates.push(localDateStr(wd));
   }
   return dates;
 }
