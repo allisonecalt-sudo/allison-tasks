@@ -502,6 +502,74 @@ input, select, textarea { font-family: inherit; }
 }
 .toast.visible { opacity: 1; }
 
+/* ── Day Navigation ── */
+.day-nav {
+  display: flex; align-items: center; justify-content: center;
+  gap: .5rem; padding: .6rem .5rem .3rem; position: relative;
+}
+.day-nav-arrow {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+.day-nav-arrow:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+.day-nav-center { text-align: center; position: relative; cursor: pointer; }
+.day-nav-date {
+  font-size: 1.05rem; font-weight: 700; color: var(--text); line-height: 1.2;
+}
+.day-nav-sub {
+  font-size: .68rem; color: var(--dim); font-weight: 500;
+}
+.day-nav-center input[type="date"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+.day-nav-today {
+  font-size: .68rem; font-weight: 600; padding: .2rem .55rem;
+  border-radius: 6px; border: 1px solid var(--accent); background: var(--asoft);
+  color: var(--accent); transition: all .15s; flex-shrink: 0;
+}
+.day-nav-today:hover { background: var(--accent); color: #fff; }
+.day-nav-today.hidden { visibility: hidden; pointer-events: none; }
+.day-nav-add {
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: var(--accent); color: #fff; font-size: 1.3rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .15s; box-shadow: var(--shadow);
+}
+.day-nav-add:hover { background: var(--abright); transform: scale(1.05); }
+
+/* ── Week Overview ── */
+.week-overview {
+  display: flex; justify-content: center; gap: .35rem;
+  padding: .25rem .5rem .5rem;
+}
+.week-dot {
+  display: flex; flex-direction: column; align-items: center;
+  gap: .15rem; cursor: pointer; padding: .2rem .35rem;
+  border-radius: 8px; transition: all .15s; min-width: 36px;
+}
+.week-dot:hover { background: var(--surface2); }
+.week-dot.active { background: var(--asoft); }
+.week-dot-label {
+  font-size: .58rem; font-weight: 600; text-transform: uppercase;
+  color: var(--dim); letter-spacing: .03em;
+}
+.week-dot.active .week-dot-label { color: var(--accent); }
+.week-dot.today .week-dot-label { color: var(--accent); font-weight: 700; }
+.week-dot-bar {
+  width: 22px; height: 4px; border-radius: 2px;
+  background: var(--surface3); transition: all .15s;
+}
+.week-dot.has-blocks .week-dot-bar { background: var(--accent); }
+.week-dot.active .week-dot-bar { background: var(--accent); }
+.week-dot-count {
+  font-family: 'DM Mono', monospace; font-size: .58rem;
+  color: var(--dim); font-weight: 500;
+}
+.week-dot.active .week-dot-count { color: var(--accent); }
+
 /* ── Day Visualizer ── */
 .day-view { padding-bottom: 1rem; }
 .day-section-label {
@@ -592,6 +660,60 @@ input, select, textarea { font-family: inherit; }
 }
 .day-summary-chip .num {
   font-family: 'DM Mono', monospace; font-weight: 700; color: var(--text);
+}
+
+/* ── Recurring Blocks ── */
+.day-block.recurring {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(45,106,79,.06),
+    rgba(45,106,79,.06) 4px,
+    rgba(45,106,79,.12) 4px,
+    rgba(45,106,79,.12) 8px
+  );
+  border: 1px dashed rgba(45,106,79,.35);
+  border-inline-start: 3px dashed var(--accent);
+  cursor: default;
+}
+.day-block.recurring:hover { box-shadow: none; }
+.day-block.recurring .day-block-title { color: var(--accent); }
+.recurring-icon {
+  font-size: .68rem; margin-inline-end: .25rem; opacity: .7;
+}
+
+/* ── Add Block Modal ── */
+.add-block-modal {
+  position: fixed; inset: 0; background: rgba(26,25,21,.45);
+  z-index: 500; display: flex; align-items: flex-end;
+  justify-content: center; opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+.add-block-modal.visible { opacity: 1; pointer-events: auto; }
+.add-block-form {
+  background: var(--surface); border-radius: var(--rl) var(--rl) 0 0;
+  width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto;
+  transform: translateY(100%); transition: transform .25s ease-out;
+  padding: 1.25rem; box-shadow: var(--shadowlg);
+}
+.add-block-modal.visible .add-block-form { transform: translateY(0); }
+@media (min-width: 601px) {
+  .add-block-modal { align-items: center; }
+  .add-block-form { border-radius: var(--rl); transform: scale(.95) translateY(20px); }
+  .add-block-modal.visible .add-block-form { transform: scale(1) translateY(0); }
+}
+.add-block-time-row {
+  display: flex; gap: .5rem; align-items: center;
+}
+.add-block-time-row input[type="time"] {
+  flex: 1; padding: .6rem .75rem; border: 1px solid var(--border);
+  border-radius: var(--r); font-size: .88rem; background: var(--surface2);
+  outline: none; font-family: 'DM Mono', monospace;
+}
+.add-block-time-row input[type="time"]:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--asoft);
+}
+.add-block-time-sep {
+  font-size: .85rem; color: var(--dim); font-weight: 500;
 }
 
 /* ── Scrollbar ── */
@@ -743,6 +865,33 @@ input, select, textarea { font-family: inherit; }
   </div>
 </div>
 
+<!-- Add Block Modal -->
+<div class="add-block-modal" id="addBlockModal">
+  <div class="add-block-form">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Time Block</div>
+
+    <div class="modal-field">
+      <div class="modal-label">Title</div>
+      <input type="text" class="modal-input" id="blockTitle" placeholder="What's happening?">
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">Time</div>
+      <div class="add-block-time-row">
+        <input type="time" id="blockStartTime" value="09:00">
+        <span class="add-block-time-sep">to</span>
+        <input type="time" id="blockEndTime" value="10:00">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-save" onclick="saveNewBlock()">Add Block</button>
+      <button class="modal-cancel" onclick="closeBlockModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -771,6 +920,13 @@ let currentTab = 'day';
 let editingTaskId = null;
 let qaEnergy = null;
 let dayNowTimer = null;
+let viewingDate = today(); // The date currently shown in My Day
+
+// ─── Recurring Events ───
+const RECURRING = [
+  { title: 'Petachya', days: [3, 4], start: '08:30', end: '14:15', color: '#2d6a4f' },
+  // Add more recurring events here
+];
 
 const TABS = [
   { id: 'day',      label: 'My Day' },
@@ -813,6 +969,16 @@ function formatDateLong(dateStr) {
 function isOverdue(t) { return t.due_date && t.due_date < today() && t.status !== 'done'; }
 function isToday(t) { return t.due_date === today(); }
 function isTomorrow(t) { return t.due_date === tomorrow(); }
+function daysFromToday(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const t = new Date(today() + 'T00:00:00');
+  const diff = Math.round((d - t) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 0) return `In ${diff} days`;
+  return `${Math.abs(diff)} days ago`;
+}
 
 // ─── Auth ───
 async function doLogin() {
@@ -919,13 +1085,14 @@ function switchTab(id) {
   currentTab = id;
   allFilters = { search: '', tags: [], energy: null, status: null };
   if (id !== 'day' && dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
+  if (id === 'day') viewingDate = today();
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
   renderCurrentTab();
 }
 
 function updateTabCounts() {
   const counts = {
-    day: tasks.filter(t => isToday(t) && t.status !== 'done' && t.status !== 'backlog').length,
+    day: tasks.filter(t => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog').length + getRecurringForDate(viewingDate).length,
     today: tasks.filter(t => (isToday(t) || isOverdue(t) || isTomorrow(t)) && t.status !== 'done' && t.status !== 'backlog').length,
     streams: '',
     all: tasks.filter(t => t.status !== 'done' && t.status !== 'backlog').length,
@@ -959,21 +1126,74 @@ function renderCurrentTab() {
   }
 }
 
+// ─── Day Navigation Helpers ───
+function navigateDay(offset) {
+  const d = new Date(viewingDate + 'T00:00:00');
+  d.setDate(d.getDate() + offset);
+  viewingDate = d.toISOString().slice(0, 10);
+  renderCurrentTab();
+}
+function jumpToDay(dateStr) {
+  if (dateStr) { viewingDate = dateStr; renderCurrentTab(); }
+}
+function jumpToToday() {
+  viewingDate = today();
+  renderCurrentTab();
+}
+
+function formatDateNav(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${dayNames[d.getDay()]} ${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+function getWeekDates(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = d.getDay(); // 0=Sun
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - dayOfWeek);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const wd = new Date(sunday);
+    wd.setDate(sunday.getDate() + i);
+    dates.push(wd.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+function getRecurringForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dow = d.getDay();
+  return RECURRING.filter(r => r.days.includes(dow));
+}
+
+function getBlockCountForDate(dateStr) {
+  const dayTasks = tasks.filter(t => t.due_date === dateStr && t.status !== 'done' && t.status !== 'backlog' && t.due_time && t.due_time.includes('-'));
+  const recurring = getRecurringForDate(dateStr);
+  return dayTasks.length + recurring.length;
+}
+
 // ─── Render: My Day ───
 function renderDay(mc) {
   // Stop any existing now-line timer
   if (dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
 
-  const todayStr = today();
-  const todayTasks = tasks.filter(t => t.due_date === todayStr && t.status !== 'done' && t.status !== 'backlog');
-  const overdueTasks = tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog');
+  const isViewingToday = viewingDate === today();
+  const viewStr = viewingDate;
+  const dayTasks = tasks.filter(t => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog');
+  // Only show overdue tasks when viewing today
+  const overdueTasks = isViewingToday ? tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog') : [];
+
+  // Get recurring events for this day
+  const recurringToday = getRecurringForDate(viewStr);
 
   // Split into time-blocked vs flexible
   const timeBlocked = [];
   const timedFlexible = [];
   const flexible = [];
 
-  todayTasks.forEach(t => {
+  dayTasks.forEach(t => {
     if (t.due_time && t.due_time.includes('-')) {
       timeBlocked.push(t);
     } else if (t.due_time) {
@@ -983,7 +1203,7 @@ function renderDay(mc) {
     }
   });
 
-  // Parse time blocks
+  // Parse time blocks from tasks
   const blocks = timeBlocked.map(t => {
     const parts = t.due_time.split('-');
     const startParts = parts[0].trim().split(':');
@@ -994,8 +1214,26 @@ function renderDay(mc) {
       startMin: parseInt(startParts[1] || 0),
       endHour: parseInt(endParts[0]),
       endMin: parseInt(endParts[1] || 0),
+      isRecurring: false,
     };
-  }).sort((a, b) => a.startHour * 60 + a.startMin - (b.startHour * 60 + b.startMin));
+  });
+
+  // Add recurring blocks
+  recurringToday.forEach(r => {
+    const startParts = r.start.split(':');
+    const endParts = r.end.split(':');
+    blocks.push({
+      task: { title: r.title, due_time: r.start + '-' + r.end, tags: [], id: null },
+      startHour: parseInt(startParts[0]),
+      startMin: parseInt(startParts[1] || 0),
+      endHour: parseInt(endParts[0]),
+      endMin: parseInt(endParts[1] || 0),
+      isRecurring: true,
+      color: r.color,
+    });
+  });
+
+  blocks.sort((a, b) => a.startHour * 60 + a.startMin - (b.startHour * 60 + b.startMin));
 
   // Calculate timeline range
   let rangeStart = 7, rangeEnd = 20;
@@ -1005,11 +1243,11 @@ function renderDay(mc) {
     rangeStart = Math.min(rangeStart, earliest - 1);
     rangeEnd = Math.max(rangeEnd, latest + 1);
   }
-  // Include current hour in range
+  // Include current hour in range only when viewing today
   const nowDate = new Date();
   const nowHour = nowDate.getHours();
   const nowMin = nowDate.getMinutes();
-  if (nowHour >= rangeStart - 1 && nowHour <= rangeEnd + 1) {
+  if (isViewingToday && nowHour >= rangeStart - 1 && nowHour <= rangeEnd + 1) {
     rangeStart = Math.min(rangeStart, nowHour);
     rangeEnd = Math.max(rangeEnd, nowHour + 1);
   }
@@ -1019,17 +1257,50 @@ function renderDay(mc) {
   const totalHours = rangeEnd - rangeStart;
   const hourHeight = 60; // px per hour
 
-  // Summary chips
+  // ─── Day Navigation Header ───
   let html = '<div class="day-view">';
 
+  const todayBtnClass = isViewingToday ? 'day-nav-today hidden' : 'day-nav-today';
+  html += `<div class="day-nav">
+    <button class="day-nav-arrow" onclick="navigateDay(-1)" title="Previous day">&#x2039;</button>
+    <button class="${todayBtnClass}" onclick="jumpToToday()">Today</button>
+    <div class="day-nav-center">
+      <div class="day-nav-date">${formatDateNav(viewStr)}</div>
+      ${isViewingToday ? '<div class="day-nav-sub">Today</div>' : `<div class="day-nav-sub">${daysFromToday(viewStr)}</div>`}
+      <input type="date" value="${viewStr}" onchange="jumpToDay(this.value)">
+    </div>
+    <button class="day-nav-add" onclick="openBlockModal()" title="Add time block">+</button>
+    <button class="day-nav-arrow" onclick="navigateDay(1)" title="Next day">&#x203A;</button>
+  </div>`;
+
+  // ─── Week Overview ───
+  const weekDates = getWeekDates(viewStr);
+  const shortDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  html += '<div class="week-overview">';
+  weekDates.forEach((wd, i) => {
+    const blockCount = getBlockCountForDate(wd);
+    const isActive = wd === viewStr;
+    const isTodayDot = wd === today();
+    let cls = 'week-dot';
+    if (isActive) cls += ' active';
+    if (isTodayDot) cls += ' today';
+    if (blockCount > 0) cls += ' has-blocks';
+    html += `<div class="${cls}" onclick="jumpToDay('${wd}')">
+      <div class="week-dot-label">${shortDays[i]}</div>
+      <div class="week-dot-bar"></div>
+      ${blockCount > 0 ? `<div class="week-dot-count">${blockCount}</div>` : `<div class="week-dot-count">&nbsp;</div>`}
+    </div>`;
+  });
+  html += '</div>';
+
+  // Summary chips
+  const taskBlocks = blocks.filter(b => !b.isRecurring);
+  const recBlocks = blocks.filter(b => b.isRecurring);
   const totalBlocked = blocks.reduce((sum, b) => {
     return sum + (b.endHour * 60 + b.endMin) - (b.startHour * 60 + b.startMin);
   }, 0);
   const blockedHrs = Math.floor(totalBlocked / 60);
   const blockedMins = totalBlocked % 60;
-  const freeTime = (rangeEnd - rangeStart) * 60 - totalBlocked;
-  const freeHrs = Math.floor(freeTime / 60);
-  const freeMins = freeTime % 60;
 
   html += '<div class="day-summary">';
   html += `<div class="day-summary-chip"><span class="num">${blocks.length}</span> block${blocks.length !== 1 ? 's' : ''}</div>`;
@@ -1041,7 +1312,7 @@ function renderDay(mc) {
   html += '</div>';
 
   // Timeline
-  if (blocks.length > 0 || (nowHour >= rangeStart && nowHour < rangeEnd)) {
+  if (blocks.length > 0 || (isViewingToday && nowHour >= rangeStart && nowHour < rangeEnd)) {
     html += '<div class="day-section-label">Timeline</div>';
     html += `<div class="day-timeline" id="dayTimeline" style="height:${totalHours * hourHeight}px">`;
 
@@ -1055,31 +1326,41 @@ function renderDay(mc) {
       </div>`;
     }
 
-    // Time blocks
+    // Render all blocks (tasks + recurring)
     blocks.forEach(b => {
       const startOffset = (b.startHour - rangeStart) * hourHeight + (b.startMin / 60) * hourHeight;
       const duration = ((b.endHour * 60 + b.endMin) - (b.startHour * 60 + b.startMin)) / 60 * hourHeight;
       const blockHeight = Math.max(duration, 28);
       const t = b.task;
       const timeStr = t.due_time;
-      const tagHTML = (t.tags || []).slice(0, 2).map(tag => {
-        const def = tagDefs.find(d => d.name === tag);
-        const bgColor = def?.color ? def.color + '18' : '';
-        const textColor = def?.color || '';
-        const style = bgColor ? `style="background:${bgColor};color:${textColor}"` : '';
-        return `<span class="tag-pill" ${style}>${getTagIcon(tag)} ${esc(tag)}</span>`;
-      }).join('');
 
-      html += `<div class="day-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px"
-                    onclick="openEditModal('${t.id}')">
-        <div class="day-block-time">${esc(timeStr)}</div>
-        <div class="day-block-title">${esc(t.title)}</div>
-        ${tagHTML ? '<div class="day-block-tags">' + tagHTML + '</div>' : ''}
-      </div>`;
+      if (b.isRecurring) {
+        // Recurring block styling
+        const bgColor = b.color || 'var(--accent)';
+        html += `<div class="day-block recurring" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px;border-color:${bgColor}40;border-inline-start-color:${bgColor}">
+          <div class="day-block-time"><span class="recurring-icon">&#x21bb;</span>${esc(timeStr)}</div>
+          <div class="day-block-title" style="color:${bgColor}">${esc(t.title)}</div>
+        </div>`;
+      } else {
+        const tagHTML = (t.tags || []).slice(0, 2).map(tag => {
+          const def = tagDefs.find(d => d.name === tag);
+          const bgColor = def?.color ? def.color + '18' : '';
+          const textColor = def?.color || '';
+          const style = bgColor ? `style="background:${bgColor};color:${textColor}"` : '';
+          return `<span class="tag-pill" ${style}>${getTagIcon(tag)} ${esc(tag)}</span>`;
+        }).join('');
+
+        html += `<div class="day-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px"
+                      onclick="openEditModal('${t.id}')">
+          <div class="day-block-time">${esc(timeStr)}</div>
+          <div class="day-block-title">${esc(t.title)}</div>
+          ${tagHTML ? '<div class="day-block-tags">' + tagHTML + '</div>' : ''}
+        </div>`;
+      }
     });
 
-    // Current time line (will be positioned by JS)
-    if (nowHour >= rangeStart && nowHour < rangeEnd) {
+    // Current time line — only when viewing today
+    if (isViewingToday && nowHour >= rangeStart && nowHour < rangeEnd) {
       const nowOffset = (nowHour - rangeStart) * hourHeight + (nowMin / 60) * hourHeight;
       const nowLabel = formatNowTime(nowHour, nowMin);
       html += `<div class="day-now-line" id="dayNowLine" style="top:${nowOffset}px">
@@ -1091,10 +1372,10 @@ function renderDay(mc) {
     html += '</div>'; // close day-timeline
   } else if (blocks.length === 0) {
     html += '<div class="day-section-label">Timeline</div>';
-    html += '<div class="day-empty">No time blocks today. Add a time range (e.g. 10:00-11:00) to a task to see it here.</div>';
+    html += `<div class="day-empty">No time blocks for this day. Tap <strong>+</strong> to add one.</div>`;
   }
 
-  // Overdue tasks
+  // Overdue tasks (only when viewing today)
   if (overdueTasks.length > 0) {
     html += `<div class="day-flexible">`;
     html += `<div class="day-flexible-header">
@@ -1132,16 +1413,18 @@ function renderDay(mc) {
     html += '</div>';
   }
 
-  // No tasks at all today
-  if (todayTasks.length === 0 && overdueTasks.length === 0) {
-    html += emptyState('Day is open', 'No tasks scheduled for today');
+  // No tasks at all for this day
+  if (dayTasks.length === 0 && overdueTasks.length === 0 && recurringToday.length === 0) {
+    html += emptyState('Day is open', isViewingToday ? 'No tasks scheduled for today' : 'No tasks scheduled for this day');
   }
 
   html += '</div>'; // close day-view
   mc.innerHTML = html;
 
-  // Update now line every minute
-  dayNowTimer = setInterval(updateDayNowLine, 60000);
+  // Update now line every minute — only when viewing today
+  if (isViewingToday) {
+    dayNowTimer = setInterval(updateDayNowLine, 60000);
+  }
 }
 
 function formatNowTime(h, m) {
@@ -1824,6 +2107,71 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2200);
 }
+
+// ─── Add Block Modal ───
+function openBlockModal() {
+  document.getElementById('blockTitle').value = '';
+  document.getElementById('blockStartTime').value = '09:00';
+  document.getElementById('blockEndTime').value = '10:00';
+  document.getElementById('addBlockModal').classList.add('visible');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('blockTitle').focus(), 100);
+}
+
+function closeBlockModal() {
+  document.getElementById('addBlockModal').classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
+// Close on overlay click
+document.getElementById('addBlockModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('addBlockModal')) closeBlockModal();
+});
+
+async function saveNewBlock() {
+  const title = document.getElementById('blockTitle').value.trim();
+  const startTime = document.getElementById('blockStartTime').value;
+  const endTime = document.getElementById('blockEndTime').value;
+
+  if (!title) { showToast('Please enter a title'); return; }
+  if (!startTime || !endTime) { showToast('Please set start and end times'); return; }
+  if (startTime >= endTime) { showToast('End time must be after start time'); return; }
+
+  const dueTime = startTime + '-' + endTime;
+  const now = new Date().toISOString();
+
+  const newTask = {
+    title,
+    status: 'open',
+    energy: null,
+    due_date: viewingDate,
+    due_time: dueTime,
+    created_at: now,
+    updated_at: now,
+    created_by: 'user',
+    tags: [],
+    notes: null,
+    parent_id: null,
+    waiting_on: null,
+    waiting_followup: null,
+    sort_order: tasks.length,
+  };
+
+  const { data, error } = await sb.from('tasks').insert(newTask).select().single();
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  tasks.push(data);
+  localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+
+  showToast('Time block added');
+  closeBlockModal();
+  renderCurrentTab();
+}
+
+// ─── Keyboard: Add block modal ───
+document.getElementById('blockTitle').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveNewBlock();
+});
 
 // ─── Init ───
 checkSession();
