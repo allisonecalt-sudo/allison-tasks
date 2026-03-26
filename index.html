@@ -879,6 +879,11 @@ input, select, textarea { font-family: inherit; }
     </div>
 
     <div class="modal-field">
+      <div class="modal-label">Date</div>
+      <input type="date" class="modal-input" id="blockDate">
+    </div>
+
+    <div class="modal-field">
       <div class="modal-label">Time</div>
       <div class="add-block-time-row">
         <input type="time" id="blockStartTime" value="09:00">
@@ -888,7 +893,7 @@ input, select, textarea { font-family: inherit; }
     </div>
 
     <div class="modal-actions">
-      <button class="modal-save" onclick="saveNewBlock()">Add Block</button>
+      <button class="modal-save" id="blockSaveBtn" onclick="saveNewBlock()">Add Block</button>
       <button class="modal-cancel" onclick="closeBlockModal()">Cancel</button>
     </div>
   </div>
@@ -2118,6 +2123,7 @@ function showToast(msg) {
 // ─── Add Block Modal ───
 function openBlockModal() {
   document.getElementById('blockTitle').value = '';
+  document.getElementById('blockDate').value = viewingDate;
   document.getElementById('blockStartTime').value = '09:00';
   document.getElementById('blockEndTime').value = '10:00';
   document.getElementById('addBlockModal').classList.add('visible');
@@ -2137,12 +2143,17 @@ document.getElementById('addBlockModal').addEventListener('click', e => {
 
 async function saveNewBlock() {
   const title = document.getElementById('blockTitle').value.trim();
+  const blockDate = document.getElementById('blockDate').value;
   const startTime = document.getElementById('blockStartTime').value;
   const endTime = document.getElementById('blockEndTime').value;
+  const btn = document.getElementById('blockSaveBtn');
 
   if (!title) { showToast('Please enter a title'); return; }
+  if (!blockDate) { showToast('Please set a date'); return; }
   if (!startTime || !endTime) { showToast('Please set start and end times'); return; }
   if (startTime >= endTime) { showToast('End time must be after start time'); return; }
+
+  btn.disabled = true; btn.textContent = 'Saving...';
 
   const dueTime = startTime + '-' + endTime;
   const now = new Date().toISOString();
@@ -2151,7 +2162,7 @@ async function saveNewBlock() {
     title,
     status: 'open',
     energy: null,
-    due_date: viewingDate,
+    due_date: blockDate,
     due_time: dueTime,
     created_at: now,
     updated_at: now,
@@ -2164,15 +2175,23 @@ async function saveNewBlock() {
     sort_order: tasks.length,
   };
 
-  const { data, error } = await sb.from('tasks').insert(newTask).select().single();
-  if (error) { showToast('Error: ' + error.message); return; }
+  try {
+    const { data, error } = await sb.from('tasks').insert(newTask).select().single();
+    btn.disabled = false; btn.textContent = 'Add Block';
+    if (error) { showToast('Error: ' + error.message); console.error('Block save error:', error); return; }
 
-  tasks.push(data);
-  localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+    tasks.push(data);
+    localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+    viewingDate = blockDate;
 
-  showToast('Time block added');
-  closeBlockModal();
-  renderCurrentTab();
+    showToast('Time block added');
+    closeBlockModal();
+    renderCurrentTab();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Add Block';
+    showToast('Error: ' + e.message);
+    console.error('Block save exception:', e);
+  }
 }
 
 // ─── Keyboard: Add block modal ───
