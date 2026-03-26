@@ -924,8 +924,7 @@ let viewingDate = today(); // The date currently shown in My Day
 
 // ─── Recurring Events ───
 const RECURRING = [
-  { title: 'Petachya', days: [3, 4], start: '08:30', end: '14:15', color: '#2d6a4f' },
-  // Add more recurring events here
+  // Recurring events live in their own tab — not auto-populated on day view
 ];
 
 const TABS = [
@@ -1414,7 +1413,7 @@ function renderDay(mc) {
   }
 
   // No tasks at all for this day
-  if (dayTasks.length === 0 && overdueTasks.length === 0 && recurringToday.length === 0) {
+  if (dayTasks.length === 0 && overdueTasks.length === 0) {
     html += emptyState('Day is open', isViewingToday ? 'No tasks scheduled for today' : 'No tasks scheduled for this day');
   }
 
