@@ -2151,7 +2151,10 @@ async function saveNewBlock() {
   if (!title) { showToast('Please enter a title'); return; }
   if (!blockDate) { showToast('Please set a date'); return; }
   if (!startTime || !endTime) { showToast('Please set start and end times'); return; }
-  if (startTime >= endTime) { showToast('End time must be after start time'); return; }
+  // Compare as minutes to avoid string format issues
+  const startMins = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1] || 0);
+  const endMins = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1] || 0);
+  if (endMins <= startMins) { showToast('End time must be after start time'); return; }
 
   btn.disabled = true; btn.textContent = 'Saving...';
 
