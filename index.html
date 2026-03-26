@@ -502,6 +502,98 @@ input, select, textarea { font-family: inherit; }
 }
 .toast.visible { opacity: 1; }
 
+/* ── Day Visualizer ── */
+.day-view { padding-bottom: 1rem; }
+.day-section-label {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); padding: .5rem .25rem .35rem;
+}
+.day-timeline {
+  position: relative; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden; min-height: 200px;
+}
+.day-hour-row {
+  display: flex; align-items: flex-start; min-height: 60px;
+  border-bottom: 1px solid var(--surface2); position: relative;
+}
+.day-hour-row:last-child { border-bottom: none; }
+.day-hour-label {
+  width: 52px; flex-shrink: 0; font-family: 'DM Mono', monospace;
+  font-size: .7rem; color: var(--dim); padding: .35rem .5rem 0 .5rem;
+  text-align: left; direction: ltr;
+}
+.day-hour-track {
+  flex: 1; position: relative; min-height: 60px;
+}
+.day-block {
+  position: absolute; left: 4px; right: 4px;
+  background: var(--asoft); border: 1px solid rgba(45,106,79,.25);
+  border-radius: 8px; padding: .45rem .6rem; z-index: 2;
+  cursor: pointer; transition: box-shadow .15s;
+  border-inline-start: 3px solid var(--accent);
+  overflow: hidden;
+}
+.day-block:hover { box-shadow: 0 2px 8px rgba(45,106,79,.18); }
+.day-block-title {
+  font-size: .82rem; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.day-block-time {
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  color: var(--accent); font-weight: 500; direction: ltr;
+  display: inline-block;
+}
+.day-block-tags {
+  display: flex; gap: .2rem; margin-top: .15rem; flex-wrap: wrap;
+}
+.day-block-tags .tag-pill { font-size: .58rem; }
+.day-now-line {
+  position: absolute; left: 52px; right: 0; height: 2px;
+  background: var(--red); z-index: 10; pointer-events: none;
+}
+.day-now-dot {
+  position: absolute; right: -5px; top: -4px; width: 10px; height: 10px;
+  background: var(--red); border-radius: 50%;
+}
+.day-now-label {
+  position: absolute; left: -50px; top: -7px; font-size: .62rem;
+  font-family: 'DM Mono', monospace; color: var(--red); font-weight: 600;
+  width: 48px; text-align: center; direction: ltr;
+}
+.day-flexible { margin-top: .75rem; }
+.day-flexible-header {
+  display: flex; align-items: center; gap: .5rem; padding: .5rem .25rem .35rem;
+}
+.day-flexible-label {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted);
+}
+.day-flexible-count {
+  font-size: .62rem; font-weight: 600; background: var(--surface2);
+  padding: .1rem .35rem; border-radius: 8px; color: var(--dim);
+}
+.day-timed-badge {
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  color: var(--accent); background: var(--asoft);
+  padding: .1rem .4rem; border-radius: 6px; font-weight: 500;
+  direction: ltr; display: inline-block;
+}
+.day-empty {
+  text-align: center; padding: 2rem 1rem; color: var(--dim);
+  font-size: .85rem;
+}
+.day-summary {
+  display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem;
+}
+.day-summary-chip {
+  font-size: .72rem; font-weight: 500; padding: .3rem .65rem;
+  border-radius: 8px; background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); display: flex; align-items: center; gap: .3rem;
+}
+.day-summary-chip .num {
+  font-family: 'DM Mono', monospace; font-weight: 700; color: var(--text);
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -614,7 +706,7 @@ input, select, textarea { font-family: inherit; }
       </div>
       <div class="modal-field">
         <div class="modal-label">Due Time</div>
-        <input type="time" class="modal-input" id="editDueTime">
+        <input type="text" class="modal-input" id="editDueTime" placeholder="10:00 or 10:00-11:00" dir="ltr" style="text-align:left">
       </div>
     </div>
 
@@ -675,11 +767,13 @@ function getTagIcon(name) { return TAG_ICONS[name] || ''; }
 // ─── State ───
 let tasks = [];
 let tagDefs = [];
-let currentTab = 'today';
+let currentTab = 'day';
 let editingTaskId = null;
 let qaEnergy = null;
+let dayNowTimer = null;
 
 const TABS = [
+  { id: 'day',      label: 'My Day' },
   { id: 'today',    label: 'Today' },
   { id: 'streams',  label: 'Streams' },
   { id: 'all',      label: 'All Tasks' },
@@ -824,12 +918,14 @@ function renderTabBar() {
 function switchTab(id) {
   currentTab = id;
   allFilters = { search: '', tags: [], energy: null, status: null };
+  if (id !== 'day' && dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
   renderCurrentTab();
 }
 
 function updateTabCounts() {
   const counts = {
+    day: tasks.filter(t => isToday(t) && t.status !== 'done' && t.status !== 'backlog').length,
     today: tasks.filter(t => (isToday(t) || isOverdue(t) || isTomorrow(t)) && t.status !== 'done' && t.status !== 'backlog').length,
     streams: '',
     all: tasks.filter(t => t.status !== 'done' && t.status !== 'backlog').length,
@@ -851,6 +947,7 @@ function renderCurrentTab() {
   renderRibbon();
   const mc = document.getElementById('mainContent');
   switch (currentTab) {
+    case 'day':      renderDay(mc); break;
     case 'today':    renderToday(mc); break;
     case 'streams':  renderStreams(mc); break;
     case 'all':      renderAll(mc); break;
@@ -859,6 +956,233 @@ function renderCurrentTab() {
     case 'low':      renderLow(mc); break;
     case 'backlog':  renderBacklog(mc); break;
     case 'done':     renderDone(mc); break;
+  }
+}
+
+// ─── Render: My Day ───
+function renderDay(mc) {
+  // Stop any existing now-line timer
+  if (dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
+
+  const todayStr = today();
+  const todayTasks = tasks.filter(t => t.due_date === todayStr && t.status !== 'done' && t.status !== 'backlog');
+  const overdueTasks = tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog');
+
+  // Split into time-blocked vs flexible
+  const timeBlocked = [];
+  const timedFlexible = [];
+  const flexible = [];
+
+  todayTasks.forEach(t => {
+    if (t.due_time && t.due_time.includes('-')) {
+      timeBlocked.push(t);
+    } else if (t.due_time) {
+      timedFlexible.push(t);
+    } else {
+      flexible.push(t);
+    }
+  });
+
+  // Parse time blocks
+  const blocks = timeBlocked.map(t => {
+    const parts = t.due_time.split('-');
+    const startParts = parts[0].trim().split(':');
+    const endParts = parts[1].trim().split(':');
+    return {
+      task: t,
+      startHour: parseInt(startParts[0]),
+      startMin: parseInt(startParts[1] || 0),
+      endHour: parseInt(endParts[0]),
+      endMin: parseInt(endParts[1] || 0),
+    };
+  }).sort((a, b) => a.startHour * 60 + a.startMin - (b.startHour * 60 + b.startMin));
+
+  // Calculate timeline range
+  let rangeStart = 7, rangeEnd = 20;
+  if (blocks.length > 0) {
+    const earliest = Math.min(...blocks.map(b => b.startHour));
+    const latest = Math.max(...blocks.map(b => b.endHour + (b.endMin > 0 ? 1 : 0)));
+    rangeStart = Math.min(rangeStart, earliest - 1);
+    rangeEnd = Math.max(rangeEnd, latest + 1);
+  }
+  // Include current hour in range
+  const nowDate = new Date();
+  const nowHour = nowDate.getHours();
+  const nowMin = nowDate.getMinutes();
+  if (nowHour >= rangeStart - 1 && nowHour <= rangeEnd + 1) {
+    rangeStart = Math.min(rangeStart, nowHour);
+    rangeEnd = Math.max(rangeEnd, nowHour + 1);
+  }
+  rangeStart = Math.max(0, rangeStart);
+  rangeEnd = Math.min(24, rangeEnd);
+
+  const totalHours = rangeEnd - rangeStart;
+  const hourHeight = 60; // px per hour
+
+  // Summary chips
+  let html = '<div class="day-view">';
+
+  const totalBlocked = blocks.reduce((sum, b) => {
+    return sum + (b.endHour * 60 + b.endMin) - (b.startHour * 60 + b.startMin);
+  }, 0);
+  const blockedHrs = Math.floor(totalBlocked / 60);
+  const blockedMins = totalBlocked % 60;
+  const freeTime = (rangeEnd - rangeStart) * 60 - totalBlocked;
+  const freeHrs = Math.floor(freeTime / 60);
+  const freeMins = freeTime % 60;
+
+  html += '<div class="day-summary">';
+  html += `<div class="day-summary-chip"><span class="num">${blocks.length}</span> block${blocks.length !== 1 ? 's' : ''}</div>`;
+  html += `<div class="day-summary-chip"><span class="num">${blockedHrs > 0 ? blockedHrs + 'h' : ''}${blockedMins > 0 ? blockedMins + 'm' : blockedHrs === 0 ? '0m' : ''}</span> scheduled</div>`;
+  html += `<div class="day-summary-chip"><span class="num">${flexible.length + timedFlexible.length}</span> flexible</div>`;
+  if (overdueTasks.length > 0) {
+    html += `<div class="day-summary-chip" style="border-color:var(--amber);color:var(--amber)"><span class="num" style="color:var(--amber)">${overdueTasks.length}</span> need attention</div>`;
+  }
+  html += '</div>';
+
+  // Timeline
+  if (blocks.length > 0 || (nowHour >= rangeStart && nowHour < rangeEnd)) {
+    html += '<div class="day-section-label">Timeline</div>';
+    html += `<div class="day-timeline" id="dayTimeline" style="height:${totalHours * hourHeight}px">`;
+
+    // Hour rows
+    for (let h = rangeStart; h < rangeEnd; h++) {
+      const top = (h - rangeStart) * hourHeight;
+      const label = h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm';
+      html += `<div class="day-hour-row" style="position:absolute;top:${top}px;left:0;right:0;height:${hourHeight}px">
+        <div class="day-hour-label">${label}</div>
+        <div class="day-hour-track"></div>
+      </div>`;
+    }
+
+    // Time blocks
+    blocks.forEach(b => {
+      const startOffset = (b.startHour - rangeStart) * hourHeight + (b.startMin / 60) * hourHeight;
+      const duration = ((b.endHour * 60 + b.endMin) - (b.startHour * 60 + b.startMin)) / 60 * hourHeight;
+      const blockHeight = Math.max(duration, 28);
+      const t = b.task;
+      const timeStr = t.due_time;
+      const tagHTML = (t.tags || []).slice(0, 2).map(tag => {
+        const def = tagDefs.find(d => d.name === tag);
+        const bgColor = def?.color ? def.color + '18' : '';
+        const textColor = def?.color || '';
+        const style = bgColor ? `style="background:${bgColor};color:${textColor}"` : '';
+        return `<span class="tag-pill" ${style}>${getTagIcon(tag)} ${esc(tag)}</span>`;
+      }).join('');
+
+      html += `<div class="day-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px"
+                    onclick="openEditModal('${t.id}')">
+        <div class="day-block-time">${esc(timeStr)}</div>
+        <div class="day-block-title">${esc(t.title)}</div>
+        ${tagHTML ? '<div class="day-block-tags">' + tagHTML + '</div>' : ''}
+      </div>`;
+    });
+
+    // Current time line (will be positioned by JS)
+    if (nowHour >= rangeStart && nowHour < rangeEnd) {
+      const nowOffset = (nowHour - rangeStart) * hourHeight + (nowMin / 60) * hourHeight;
+      const nowLabel = formatNowTime(nowHour, nowMin);
+      html += `<div class="day-now-line" id="dayNowLine" style="top:${nowOffset}px">
+        <div class="day-now-label">${nowLabel}</div>
+        <div class="day-now-dot"></div>
+      </div>`;
+    }
+
+    html += '</div>'; // close day-timeline
+  } else if (blocks.length === 0) {
+    html += '<div class="day-section-label">Timeline</div>';
+    html += '<div class="day-empty">No time blocks today. Add a time range (e.g. 10:00-11:00) to a task to see it here.</div>';
+  }
+
+  // Overdue tasks
+  if (overdueTasks.length > 0) {
+    html += `<div class="day-flexible">`;
+    html += `<div class="day-flexible-header">
+      <div class="day-flexible-label" style="color:var(--amber)">Need Attention</div>
+      <div class="day-flexible-count" style="color:var(--amber)">${overdueTasks.length}</div>
+    </div>`;
+    overdueTasks.sort((a,b) => (a.due_date||'').localeCompare(b.due_date||''));
+    html += overdueTasks.map(t => renderTaskCard(t)).join('');
+    html += '</div>';
+  }
+
+  // Timed flexible tasks
+  if (timedFlexible.length > 0) {
+    timedFlexible.sort((a, b) => (a.due_time || '').localeCompare(b.due_time || ''));
+    html += `<div class="day-flexible">`;
+    html += `<div class="day-flexible-header">
+      <div class="day-flexible-label">Timed Tasks</div>
+      <div class="day-flexible-count">${timedFlexible.length}</div>
+    </div>`;
+    html += timedFlexible.map(t => {
+      const extra = `<span class="day-timed-badge">${esc(t.due_time)}</span>`;
+      return renderTaskCard(t, false, extra);
+    }).join('');
+    html += '</div>';
+  }
+
+  // Flexible tasks (no time)
+  if (flexible.length > 0) {
+    html += `<div class="day-flexible">`;
+    html += `<div class="day-flexible-header">
+      <div class="day-flexible-label">Flexible</div>
+      <div class="day-flexible-count">${flexible.length}</div>
+    </div>`;
+    html += flexible.map(t => renderTaskCard(t)).join('');
+    html += '</div>';
+  }
+
+  // No tasks at all today
+  if (todayTasks.length === 0 && overdueTasks.length === 0) {
+    html += emptyState('Day is open', 'No tasks scheduled for today');
+  }
+
+  html += '</div>'; // close day-view
+  mc.innerHTML = html;
+
+  // Update now line every minute
+  dayNowTimer = setInterval(updateDayNowLine, 60000);
+}
+
+function formatNowTime(h, m) {
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const hr = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return hr + ':' + String(m).padStart(2, '0') + ampm;
+}
+
+function updateDayNowLine() {
+  const line = document.getElementById('dayNowLine');
+  const timeline = document.getElementById('dayTimeline');
+  if (!line || !timeline) return;
+
+  const nowDate = new Date();
+  const nowHour = nowDate.getHours();
+  const nowMin = nowDate.getMinutes();
+
+  // Recalculate range from the timeline's current height
+  const hourHeight = 60;
+  const timelineHeight = parseInt(timeline.style.height);
+  const totalHours = timelineHeight / hourHeight;
+
+  // Get rangeStart from the first hour label
+  const firstLabel = timeline.querySelector('.day-hour-label');
+  if (!firstLabel) return;
+  const labelText = firstLabel.textContent.trim();
+  let rangeStart = 7;
+  if (labelText.endsWith('am')) {
+    rangeStart = labelText === '12am' ? 0 : parseInt(labelText);
+  } else if (labelText.endsWith('pm')) {
+    rangeStart = labelText === '12pm' ? 12 : parseInt(labelText) + 12;
+  }
+
+  if (nowHour >= rangeStart && nowHour < rangeStart + totalHours) {
+    const nowOffset = (nowHour - rangeStart) * hourHeight + (nowMin / 60) * hourHeight;
+    line.style.top = nowOffset + 'px';
+    line.style.display = '';
+    const nowLabel = line.querySelector('.day-now-label');
+    if (nowLabel) nowLabel.textContent = formatNowTime(nowHour, nowMin);
+  } else {
+    line.style.display = 'none';
   }
 }
 
