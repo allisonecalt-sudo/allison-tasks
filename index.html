@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -506,7 +506,6 @@ input, select, textarea { font-family: inherit; }
 .day-nav {
   display: flex; align-items: center; justify-content: center;
   gap: .5rem; padding: .6rem .5rem .3rem; position: relative;
-  direction: ltr;
 }
 .day-nav-arrow {
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
@@ -545,7 +544,6 @@ input, select, textarea { font-family: inherit; }
 .week-overview {
   display: flex; justify-content: center; gap: .35rem;
   padding: .25rem .5rem .5rem;
-  direction: ltr;
 }
 .week-dot {
   display: flex; flex-direction: column; align-items: center;
@@ -2151,10 +2149,6 @@ async function saveNewBlock() {
   if (!title) { showToast('Please enter a title'); return; }
   if (!blockDate) { showToast('Please set a date'); return; }
   if (!startTime || !endTime) { showToast('Please set start and end times'); return; }
-  // Compare as minutes to avoid string format issues
-  const startMins = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1] || 0);
-  const endMins = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1] || 0);
-  if (endMins <= startMins) { showToast('End time must be after start time'); return; }
 
   btn.disabled = true; btn.textContent = 'Saving...';
 
