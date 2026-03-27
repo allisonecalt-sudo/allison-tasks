@@ -949,6 +949,7 @@ const TABS = [
 
 let allFilters = { search: '', tags: [], energy: null, status: null };
 let focusSearch = '';
+let focusSearch = '';
 
 // ─── Date Helpers ───
 function localDateStr(d) {
@@ -1266,7 +1267,7 @@ function renderDay(mc) {
   if (blocks.length > 0) {
     const earliest = Math.min(...blocks.map(b => b.startHour));
     const latest = Math.max(...blocks.map(b => b.endHour + (b.endMin > 0 ? 1 : 0)));
-    rangeStart = Math.min(rangeStart, earliest - 1);
+    rangeStart = earliest - 1;
     rangeEnd = Math.max(rangeEnd, latest + 1);
   }
   // Include current hour in range only when viewing today
