@@ -501,8 +501,16 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--r); font-size: .82rem; font-weight: 500;
   z-index: 700; opacity: 0; transition: opacity .2s;
   pointer-events: none; white-space: nowrap;
+  display: flex; align-items: center; gap: .75rem;
 }
 .toast.visible { opacity: 1; }
+.toast.has-undo { pointer-events: auto; }
+.toast-undo-btn {
+  background: none; border: 1px solid rgba(255,255,255,.5); color: #fff;
+  padding: .2rem .6rem; border-radius: 4px; font-size: .78rem;
+  cursor: pointer; font-family: inherit; font-weight: 600;
+}
+.toast-undo-btn:hover { background: rgba(255,255,255,.15); }
 
 /* ── Day Navigation ── */
 .day-nav {
@@ -1919,9 +1927,10 @@ async function toggleDone(id, currentStatus) {
   if (task) { Object.assign(task, update); localStorage.setItem('tasks_cache', JSON.stringify(tasks)); }
 
   if (newStatus === 'done') {
-    showToast('Task completed!');
+    showToast('Done!', () => toggleDone(id, 'done'));
     setTimeout(() => renderCurrentTab(), 350);
   } else {
+    showToast('Reopened');
     renderCurrentTab();
   }
 }
@@ -2188,12 +2197,26 @@ function emptyState(title, subtitle) {
 }
 
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, undoFn = null) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('visible'), 2200);
+  if (undoFn) {
+    t.innerHTML = `<span>${msg}</span><button class="toast-undo-btn" onclick="toastUndo()">Undo</button>`;
+    t._undoFn = undoFn;
+    t.classList.add('has-undo');
+  } else {
+    t.innerHTML = `<span>${msg}</span>`;
+    t._undoFn = null;
+    t.classList.remove('has-undo');
+  }
+  t.classList.add('visible');
+  toastTimer = setTimeout(() => { t.classList.remove('visible', 'has-undo'); }, undoFn ? 4000 : 2200);
+}
+function toastUndo() {
+  const t = document.getElementById('toast');
+  if (t._undoFn) { t._undoFn(); t._undoFn = null; }
+  clearTimeout(toastTimer);
+  t.classList.remove('visible', 'has-undo');
 }
 
 // ─── Add Block Modal ───
