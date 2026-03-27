@@ -1332,6 +1332,7 @@ const TABS = [
   { id: 'events',     label: 'Events' },
   { id: 'recurring',  label: 'Recurring' },
   { id: 'done',       label: 'Done' },
+  { id: 'history',    label: 'History' },
   { id: 'dashboards', label: 'Dashboards' },
 ];
 
@@ -1565,6 +1566,7 @@ function renderCurrentTab() {
     case 'events':     renderEvents(mc); break;
     case 'recurring':  renderRecurring(mc); break;
     case 'done':       renderDone(mc); break;
+    case 'history':    renderHistory(mc); break;
     case 'dashboards': renderDashboards(mc); break;
   }
 }
@@ -2294,6 +2296,127 @@ function renderDone(mc) {
       const extra = `<div class="task-age">Completed ${t.completed_at ? formatDateLong(t.completed_at.slice(0,10)) : ''}</div>`;
       return renderTaskCard(t, false, extra, false, true);
     }).join('');
+}
+
+
+// ─── History Tab ───
+// WHY THIS EXISTS:
+// Claude (the AI assistant) reads this at session start to know what Allison
+// has done without her re-explaining. Every status/title/tag change is auto-logged
+// by a Postgres trigger. Allison can also tap 📎 to add a free-text note on any
+// entry — "did this offline", "talked to Reuven", "cancelled — changed plans".
+// Notes written on task CARDS (the Notes field in the edit modal) are also logged.
+//
+// HOW CLAUDE READS IT — run this SQL at session start (50 rows = cheap on tokens):
+//   SELECT h.changed_at, h.field_changed, h.old_value, h.new_value, h.note, t.title
+//   FROM task_history h LEFT JOIN tasks t ON t.id = h.task_id
+//   ORDER BY h.changed_at DESC LIMIT 50;
+//
+// That single query tells Claude the last 50 moves + any context notes.
+// No need to ask Allison "what did you do?" — just read the log.
+
+let historyData = [];
+let historyLoaded = false;
+
+async function renderHistory(mc) {
+  mc.innerHTML = '<div class="section-hdr">Activity Log</div>' +
+    '<div id="historyList"><div style="padding:2rem;text-align:center;color:var(--text2)">Loading…</div></div>' +
+    '<div style="padding:1rem"><button class="btn-primary" onclick="openAddNoteModal(null)" style="width:100%">+ Add Note for Claude</button></div>';
+
+  if (!historyLoaded) {
+    const { data, error } = await sb
+      .from('task_history')
+      .select('*, tasks(title)')
+      .order('changed_at', { ascending: false })
+      .limit(100);
+    if (!error) { historyData = data || []; historyLoaded = true; }
+  }
+
+  const list = document.getElementById('historyList');
+  if (!historyData.length) {
+    list.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text2)">No history yet — actions appear here automatically.</div>';
+    return;
+  }
+
+  const fmt = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IL', { weekday:'short', month:'short', day:'numeric' })
+      + ' ' + d.toLocaleTimeString('en-IL', { hour:'2-digit', minute:'2-digit' });
+  };
+
+  const icon = f => ({ status:'✅', title:'✏️', tags:'🏷️', notes:'📝', due_date:'📅', note:'📎' }[f] || '📌');
+
+  const formatChange = h => {
+    if (h.field_changed === 'status') {
+      const L = { open:'Open', done:'Done ✓', waiting:'Waiting', backlog:'Backlog' };
+      const ov = L[h.old_value] || h.old_value || '—';
+      const nv = L[h.new_value] || h.new_value || '—';
+      return '<span style="color:var(--text2)">' + ov + ' → <strong>' + nv + '</strong></span>';
+    }
+    if (h.field_changed === 'note') return '<span style="color:var(--text2)">Standalone note</span>';
+    return '<span style="color:var(--text2)">' + esc(h.field_changed) + ' changed</span>';
+  };
+
+  list.innerHTML = historyData.map(h => {
+    const title = esc((h.tasks && h.tasks.title) || '(standalone note)');
+    const noteHtml = h.note
+      ? '<div style="font-size:.85rem;margin-top:.3rem;background:var(--surface2);padding:.4rem .6rem;border-radius:.4rem;color:var(--text)">📎 ' + esc(h.note) + '</div>'
+      : '';
+    return (
+      '<div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;gap:.75rem;align-items:flex-start">' +
+        '<div style="font-size:1.2rem;padding-top:.1rem">' + icon(h.field_changed) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;font-size:.9rem">' + title + '</div>' +
+          '<div style="font-size:.85rem;margin-top:.15rem">' + formatChange(h) + '</div>' +
+          noteHtml +
+          '<div style="font-size:.75rem;color:var(--text3);margin-top:.25rem">' + fmt(h.changed_at) + '</div>' +
+        '</div>' +
+        '<button onclick="openAddNoteModal('' + h.id + '')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.8rem;padding:.2rem .4rem;border-radius:.3rem" title="Add note">📎</button>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function openAddNoteModal(historyId) {
+  const modal = document.createElement('div');
+  modal.className = 'history-note-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML =
+    '<div style="background:var(--surface);border-radius:.75rem;padding:1.5rem;width:100%;max-width:420px">' +
+      '<div style="font-weight:700;margin-bottom:.5rem">Note for Claude</div>' +
+      '<div style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem">Claude reads these at session start — context, decisions, what happened offline.</div>' +
+      '<textarea id="histNoteInput" style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);border-radius:.5rem;padding:.6rem;color:var(--text);font-size:.9rem;resize:vertical;box-sizing:border-box" placeholder="e.g. did this offline, talked to Reuven about this, cancelled because..." dir="auto"></textarea>' +
+      '<div style="display:flex;gap:.75rem;margin-top:1rem">' +
+        '<button onclick="document.querySelector('.history-note-modal').remove()" style="flex:1;padding:.6rem;background:var(--surface2);border:none;border-radius:.5rem;cursor:pointer;color:var(--text)">Cancel</button>' +
+        '<button onclick="saveHistoryNote('' + historyId + '', this)" style="flex:1;padding:.6rem;background:var(--accent);border:none;border-radius:.5rem;cursor:pointer;color:#fff;font-weight:600">Save</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  setTimeout(() => modal.querySelector('#histNoteInput').focus(), 50);
+}
+
+async function saveHistoryNote(historyId, btn) {
+  const note = document.getElementById('histNoteInput').value.trim();
+  if (!note) return;
+  btn.textContent = 'Saving…';
+  const now = new Date().toISOString();
+
+  if (historyId && historyId !== 'null') {
+    await sb.from('task_history').update({ note }).eq('id', historyId);
+    const entry = historyData.find(h => h.id === historyId);
+    if (entry) entry.note = note;
+  } else {
+    const { data } = await sb.from('task_history').insert({
+      task_id: null, field_changed: 'note', old_value: null, new_value: note,
+      changed_at: now, changed_by: 'allison', note
+    }).select().single();
+    if (data) historyData.unshift(data);
+  }
+
+  document.querySelector('.history-note-modal').remove();
+  historyLoaded = false;
+  if (currentTab === 'history') renderHistory(document.getElementById('mainContent'));
+  showToast('Note saved ✓');
 }
 
 // ─── Task Card Renderer ───
