@@ -114,7 +114,10 @@ input, select, textarea { font-family: inherit; }
 .ribbon-stat {
   text-align: center; padding: .3rem .25rem;
   border-radius: 8px; background: var(--surface2);
+  cursor: pointer; transition: all .15s;
 }
+.ribbon-stat:hover { background: var(--surface3); transform: translateY(-1px); }
+.ribbon-stat:active { transform: translateY(0); }
 .ribbon-label {
   font-size: .55rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); line-height: 1.2;
@@ -167,6 +170,7 @@ input, select, textarea { font-family: inherit; }
   position: relative; overflow: hidden;
 }
 .task-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(26,25,21,.12); }
+.task-card.aging { border-inline-start: 3px solid var(--amber); }
 .task-card.done-anim {
   opacity: 0; transform: translateX(60px); transition: all .35s ease-out;
 }
@@ -291,8 +295,28 @@ input, select, textarea { font-family: inherit; }
 .quick-add {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--surface); border-top: 1px solid var(--border);
-  padding: .6rem .75rem; box-shadow: 0 -2px 12px rgba(26,25,21,.1);
-  z-index: 200; display: flex; gap: .5rem; align-items: center;
+  padding: .5rem .75rem .6rem; box-shadow: 0 -2px 12px rgba(26,25,21,.1);
+  z-index: 200; display: flex; flex-direction: column; gap: .4rem;
+}
+.quick-add-row1 { display: flex; gap: .5rem; align-items: center; }
+.quick-add-dates { display: flex; gap: .3rem; align-items: center; }
+.qa-date-btn {
+  font-size: .7rem; font-weight: 500; padding: .22rem .5rem;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted); cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.qa-date-btn:hover { border-color: var(--accent); color: var(--accent); }
+.qa-date-btn.active { border-color: var(--accent); color: var(--accent); background: var(--asoft); font-weight: 600; }
+.qa-date-pick-wrap { position: relative; display: inline-flex; align-items: center; }
+.qa-date-pick-wrap input[type="date"] {
+  font-size: .7rem; padding: .22rem .5rem; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); cursor: pointer; outline: none;
+  font-family: inherit;
+}
+.qa-date-pick-wrap input[type="date"].active {
+  border-color: var(--accent); color: var(--accent); background: var(--asoft);
 }
 .quick-add-input {
   flex: 1; padding: .6rem .8rem; border: 1px solid var(--border);
@@ -733,6 +757,109 @@ input, select, textarea { font-family: inherit; }
   font-size: .85rem; color: var(--dim); font-weight: 500;
 }
 
+/* ── Events Tab ── */
+.event-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .75rem .85rem; margin-bottom: .5rem;
+  box-shadow: var(--shadow); border-inline-start: 3px solid #7c3aed;
+}
+.event-title { font-size: .9rem; font-weight: 600; }
+.event-meta { font-size: .72rem; color: var(--muted); margin-top: .25rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+.event-date { color: #7c3aed; font-weight: 500; }
+.event-with { color: var(--dim); }
+.event-delete {
+  float: right; background: none; border: none; color: var(--dim);
+  font-size: .85rem; cursor: pointer; padding: .1rem .3rem; border-radius: 4px;
+}
+.event-delete:hover { color: var(--red); background: var(--rsoft); }
+.day-block.event-block {
+  background: rgba(124,58,237,.10);
+  border: 1px solid rgba(124,58,237,.25);
+  border-inline-start: 3px solid #7c3aed;
+}
+.day-block.event-block .day-block-title { color: #7c3aed; }
+.day-block.event-block .day-block-time { color: #7c3aed; }
+
+/* ── Recurring Tab ── */
+.recurring-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .75rem .85rem; margin-bottom: .5rem;
+  box-shadow: var(--shadow); display: flex; align-items: center; gap: .75rem;
+}
+.recurring-status-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.recurring-body { flex: 1; min-width: 0; }
+.recurring-title { font-size: .88rem; font-weight: 600; }
+.recurring-meta { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+.recurring-due { font-size: .72rem; font-weight: 600; margin-top: .2rem; }
+.recurring-done-btn {
+  font-size: .72rem; font-weight: 600; padding: .3rem .65rem;
+  border-radius: 6px; border: 1px solid var(--accent);
+  background: var(--asoft); color: var(--accent); cursor: pointer;
+  flex-shrink: 0; transition: all .15s;
+}
+.recurring-done-btn:hover { background: var(--accent); color: #fff; }
+.recurring-delete-btn {
+  font-size: .8rem; padding: .25rem .4rem; border-radius: 6px;
+  border: 1px solid var(--border); background: none; color: var(--dim);
+  cursor: pointer; flex-shrink: 0;
+}
+.recurring-delete-btn:hover { color: var(--red); border-color: var(--rsoft); background: var(--rsoft); }
+
+/* ── Week Tab ── */
+.week-view { padding-bottom: 1rem; }
+.week-col-header {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); padding: .5rem .25rem .35rem;
+  display: flex; align-items: center; gap: .4rem;
+}
+.week-col-header.today-col { color: var(--accent); }
+.week-col-date { font-family: 'DM Mono', monospace; font-size: .7rem; }
+.week-day-section { margin-bottom: .75rem; }
+.week-task-row {
+  display: flex; align-items: center; gap: .5rem; padding: .3rem .5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: .25rem; cursor: pointer;
+  transition: all .15s;
+}
+.week-task-row:hover { border-color: var(--accent); }
+.week-floating-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .75rem; margin-top: .5rem;
+}
+.week-floating-label {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin-bottom: .5rem;
+}
+
+/* ── Add Form (shared for Events, Recurring) ── */
+.add-form-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .85rem; margin-top: .75rem;
+  box-shadow: var(--shadow);
+}
+.add-form-title {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: .65rem;
+}
+.add-form-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.add-form-row input, .add-form-row select {
+  flex: 1; min-width: 100px; padding: .5rem .65rem;
+  border: 1px solid var(--border); border-radius: var(--r);
+  font-size: .82rem; background: var(--surface2);
+  outline: none; font-family: inherit;
+}
+.add-form-row input:focus, .add-form-row select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--asoft);
+}
+.add-form-btn {
+  padding: .5rem 1rem; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--r); font-size: .82rem;
+  font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.add-form-btn:hover { background: var(--abright); }
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -784,17 +911,22 @@ input, select, textarea { font-family: inherit; }
 
   <!-- Quick Add -->
   <div class="quick-add" id="quickAdd">
-    <input type="text" class="quick-add-input" id="qaInput" placeholder="Add a task...">
-    <div class="quick-add-date" id="qaDateWrap" title="Set due date">
-      &#x1f4c5;
-      <input type="date" id="qaDate" onchange="handleQADate()">
+    <div class="quick-add-row1">
+      <input type="text" class="quick-add-input" id="qaInput" placeholder="Add a task...">
+      <div class="energy-picker">
+        <button class="energy-pick" data-e="low" onclick="pickQAEnergy(this)" title="Low energy"></button>
+        <button class="energy-pick" data-e="medium" onclick="pickQAEnergy(this)" title="Medium energy"></button>
+        <button class="energy-pick" data-e="high" onclick="pickQAEnergy(this)" title="High energy"></button>
+      </div>
+      <button class="quick-add-btn" id="qaBtn" onclick="quickAddTask()" title="Add task">+</button>
     </div>
-    <div class="energy-picker">
-      <button class="energy-pick" data-e="low" onclick="pickQAEnergy(this)" title="Low energy"></button>
-      <button class="energy-pick" data-e="medium" onclick="pickQAEnergy(this)" title="Medium energy"></button>
-      <button class="energy-pick" data-e="high" onclick="pickQAEnergy(this)" title="High energy"></button>
+    <div class="quick-add-dates">
+      <button class="qa-date-btn" id="qaBtnToday" onclick="setQADate('today')">Today</button>
+      <button class="qa-date-btn" id="qaBtnTomorrow" onclick="setQADate('tomorrow')">Tomorrow</button>
+      <div class="qa-date-pick-wrap">
+        <input type="date" id="qaDate" onchange="handleQADatePicker()" title="Pick a date">
+      </div>
     </div>
-    <button class="quick-add-btn" id="qaBtn" onclick="quickAddTask()" title="Add task">+</button>
   </div>
 </div>
 
@@ -956,11 +1088,14 @@ const RECURRING = [
 ];
 
 const TABS = [
-  { id: 'day',      label: 'My Day' },
-  { id: 'focus',    label: 'Focus' },
-  { id: 'all',      label: 'All' },
-  { id: 'streams',  label: 'Streams' },
-  { id: 'done',     label: 'Done' },
+  { id: 'day',       label: 'My Day' },
+  { id: 'focus',     label: 'Focus' },
+  { id: 'all',       label: 'All' },
+  { id: 'streams',   label: 'Streams' },
+  { id: 'week',      label: 'Week' },
+  { id: 'events',    label: 'Events' },
+  { id: 'recurring', label: 'Recurring' },
+  { id: 'done',      label: 'Done' },
 ];
 
 let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due' };
@@ -1099,20 +1234,25 @@ function renderRibbon() {
   const doneWeek = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= sevenDaysAgo).length;
 
   const stats = [
-    { label: 'Open', val: openCount, cls: '' },
-    { label: 'Waiting', val: waitCount, cls: '' },
-    { label: 'Decisions', val: decideCount, cls: decideCount > 0 ? 'blue' : '' },
-    { label: 'Need Attention', val: overdueCount, cls: overdueCount > 0 ? 'amber' : '' },
-    { label: 'Floating', val: floatCount, cls: '' },
-    { label: 'Done (7d)', val: doneWeek, cls: '' },
+    { label: 'Open', val: openCount, cls: '', action: () => { switchTab('all'); } },
+    { label: 'Waiting', val: waitCount, cls: '', action: () => { switchTab('focus'); setTimeout(() => { allFilters.status = 'waiting'; renderCurrentTab(); }, 10); } },
+    { label: 'Decisions', val: decideCount, cls: decideCount > 0 ? 'blue' : '', action: () => { switchTab('focus'); } },
+    { label: 'Need Attention', val: overdueCount, cls: overdueCount > 0 ? 'amber' : '', action: () => { switchTab('focus'); } },
+    { label: 'Floating', val: floatCount, cls: '', action: () => { switchTab('all'); setTimeout(() => { allFilters.status = 'open'; allFilters.search = ''; renderCurrentTab(); const el = document.getElementById('mainContent'); el.scrollTop = 0; }, 10); } },
+    { label: 'Done (7d)', val: doneWeek, cls: '', action: () => { switchTab('done'); } },
   ];
 
-  document.getElementById('ribbonGrid').innerHTML = stats.map(s =>
-    `<div class="ribbon-stat">
+  document.getElementById('ribbonGrid').innerHTML = stats.map((s, i) =>
+    `<div class="ribbon-stat" onclick="ribbonStatClick(${i})" title="Click to view">
       <div class="ribbon-label">${s.label}</div>
       <div class="ribbon-val ${s.cls}">${s.val}</div>
     </div>`
   ).join('');
+  window._ribbonActions = stats.map(s => s.action);
+}
+
+function ribbonStatClick(i) {
+  if (window._ribbonActions && window._ribbonActions[i]) window._ribbonActions[i]();
 }
 
 // ─── Tab Bar ───
@@ -1133,6 +1273,9 @@ function switchTab(id) {
   if (id !== 'day' && dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
   if (id === 'day') viewingDate = today();
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  // Hide quick-add on tabs that have their own add forms
+  const qa = document.getElementById('quickAdd');
+  if (qa) qa.style.display = (id === 'events' || id === 'recurring') ? 'none' : '';
   renderCurrentTab();
 }
 
@@ -1141,11 +1284,16 @@ function updateTabCounts() {
     if (t.status === 'done' || t.status === 'backlog') return false;
     return isToday(t) || isOverdue(t) || isTomorrow(t) || t.status === 'waiting' || t.status === 'decide' || (!t.due_date && t.status === 'open');
   }).length;
+  const eventsData = getEventsData();
+  const recurringData = getRecurringData();
   const counts = {
     day: tasks.filter(t => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog').length + getRecurringForDate(viewingDate).length,
     focus: focusCount,
     all: tasks.filter(t => t.status !== 'done').length,
     streams: '',
+    week: '',
+    events: eventsData.filter(e => e.date >= today()).length,
+    recurring: recurringData.filter(r => getDaysUntilDue(r) <= 0).length || '',
     done: tasks.filter(t => t.status === 'done').length,
   };
   TABS.forEach(t => {
@@ -1160,11 +1308,14 @@ function renderCurrentTab() {
   renderRibbon();
   const mc = document.getElementById('mainContent');
   switch (currentTab) {
-    case 'day':      renderDay(mc); break;
-    case 'focus':    renderFocus(mc); break;
-    case 'all':      renderAll(mc); break;
-    case 'streams':  renderStreams(mc); break;
-    case 'done':     renderDone(mc); break;
+    case 'day':       renderDay(mc); break;
+    case 'focus':     renderFocus(mc); break;
+    case 'all':       renderAll(mc); break;
+    case 'streams':   renderStreams(mc); break;
+    case 'week':      renderWeek(mc); break;
+    case 'events':    renderEvents(mc); break;
+    case 'recurring': renderRecurring(mc); break;
+    case 'done':      renderDone(mc); break;
   }
 }
 
@@ -1275,6 +1426,21 @@ function renderDay(mc) {
     });
   });
 
+  // Add event blocks (from localStorage events that have a time)
+  const dayEvents = getEventsForDate(viewStr);
+  dayEvents.forEach(ev => {
+    const timeParts = ev.time.split(':');
+    const startH = parseInt(timeParts[0]);
+    const startM = parseInt(timeParts[1] || 0);
+    blocks.push({
+      task: { title: ev.title, due_time: ev.time, tags: [], id: null },
+      startHour: startH, startMin: startM,
+      endHour: startH + 1, endMin: startM,
+      isEvent: true,
+      eventData: ev,
+    });
+  });
+
   blocks.sort((a, b) => a.startHour * 60 + a.startMin - (b.startHour * 60 + b.startMin));
 
   // Calculate timeline range
@@ -1376,7 +1542,14 @@ function renderDay(mc) {
       const t = b.task;
       const timeStr = t.due_time;
 
-      if (b.isRecurring) {
+      if (b.isEvent) {
+        // Calendar event block (purple)
+        html += `<div class="day-block event-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px" onclick="switchTab('events')">
+          <div class="day-block-time">&#x1F5D3; ${esc(timeStr)}</div>
+          <div class="day-block-title">${esc(t.title)}</div>
+          ${b.eventData.with_person ? `<div style="font-size:.68rem;color:#7c3aed;opacity:.8">with ${esc(b.eventData.with_person)}</div>` : ''}
+        </div>`;
+      } else if (b.isRecurring) {
         // Recurring block styling
         const bgColor = b.color || 'var(--accent)';
         html += `<div class="day-block recurring" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px;border-color:${bgColor}40;border-inline-start-color:${bgColor}">
@@ -1651,7 +1824,7 @@ function renderStreams(mc) {
           <span style="${color ? 'color:' + color : ''}">${esc(displayName)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem">
-          <span class="stream-count">${total} tasks</span>
+          <span class="stream-count">${total} task${total !== 1 ? 's' : ''}</span>
           <span class="stream-chevron">&#x25B6;</span>
         </div>
       </div>
@@ -1919,7 +2092,10 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
   const notesPreview = t.notes && !compact
     ? `<div class="task-notes-preview">${esc(t.notes)}</div>` : '';
 
-  return `<div class="task-card" id="card_${t.id}" onclick="openEditModal('${t.id}')">
+  const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
+  const isAging = agingDays >= 14 && t.status !== 'done' && t.status !== 'backlog';
+
+  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" onclick="openEditModal('${t.id}')">
     <div class="task-top">
       <div class="task-check ${checked}" onclick="event.stopPropagation();toggleDone('${t.id}','${t.status}')"></div>
       <div class="task-body">
@@ -2001,10 +2177,64 @@ function pickQAEnergy(btn) {
   else { btn.classList.add('active'); qaEnergy = btn.dataset.e; }
 }
 
-function handleQADate() {
-  const wrap = document.getElementById('qaDateWrap');
+let qaDate = null; // stores the selected date string YYYY-MM-DD
+
+function setQADate(which) {
+  const todayStr = today();
+  const tomorrowStr = tomorrow();
+  const btnToday = document.getElementById('qaBtnToday');
+  const btnTomorrow = document.getElementById('qaBtnTomorrow');
+  const pickerEl = document.getElementById('qaDate');
+
+  if (which === 'today') {
+    if (qaDate === todayStr) {
+      qaDate = null;
+      btnToday.classList.remove('active');
+    } else {
+      qaDate = todayStr;
+      btnToday.classList.add('active');
+      btnTomorrow.classList.remove('active');
+      pickerEl.value = '';
+      pickerEl.classList.remove('active');
+    }
+  } else if (which === 'tomorrow') {
+    if (qaDate === tomorrowStr) {
+      qaDate = null;
+      btnTomorrow.classList.remove('active');
+    } else {
+      qaDate = tomorrowStr;
+      btnTomorrow.classList.add('active');
+      btnToday.classList.remove('active');
+      pickerEl.value = '';
+      pickerEl.classList.remove('active');
+    }
+  }
+}
+
+function handleQADatePicker() {
   const val = document.getElementById('qaDate').value;
-  wrap.classList.toggle('has-date', !!val);
+  const btnToday = document.getElementById('qaBtnToday');
+  const btnTomorrow = document.getElementById('qaBtnTomorrow');
+  const pickerEl = document.getElementById('qaDate');
+  if (val) {
+    qaDate = val;
+    btnToday.classList.remove('active');
+    btnTomorrow.classList.remove('active');
+    pickerEl.classList.add('active');
+  } else {
+    qaDate = null;
+    pickerEl.classList.remove('active');
+  }
+}
+
+function resetQADate() {
+  qaDate = null;
+  const btnToday = document.getElementById('qaBtnToday');
+  const btnTomorrow = document.getElementById('qaBtnTomorrow');
+  const pickerEl = document.getElementById('qaDate');
+  if (btnToday) btnToday.classList.remove('active');
+  if (btnTomorrow) btnTomorrow.classList.remove('active');
+  if (pickerEl) { pickerEl.value = ''; pickerEl.classList.remove('active'); }
 }
 
 async function quickAddTask() {
@@ -2015,7 +2245,7 @@ async function quickAddTask() {
   const btn = document.getElementById('qaBtn');
   btn.disabled = true;
 
-  const dateVal = document.getElementById('qaDate').value || null;
+  const dateVal = qaDate || null;
   const now = new Date().toISOString();
 
   const newTask = {
@@ -2044,8 +2274,7 @@ async function quickAddTask() {
 
   // Reset
   input.value = '';
-  document.getElementById('qaDate').value = '';
-  document.getElementById('qaDateWrap').classList.remove('has-date');
+  resetQADate();
   document.querySelectorAll('.energy-pick').forEach(b => b.classList.remove('active'));
   qaEnergy = null;
 
@@ -2393,6 +2622,249 @@ async function saveNewBlock() {
 document.getElementById('blockTitle').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveNewBlock();
 });
+
+// ─── Events (localStorage) ───
+function getEventsData() {
+  try { return JSON.parse(localStorage.getItem('allison_events') || '[]'); }
+  catch(e) { return []; }
+}
+function saveEventsData(arr) {
+  localStorage.setItem('allison_events', JSON.stringify(arr));
+}
+
+function renderEvents(mc) {
+  const events = getEventsData().sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+  const todayStr = today();
+
+  // Group by week
+  function getWeekGroup(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const t = new Date(todayStr + 'T00:00:00');
+    const diff = Math.floor((d - t) / 86400000);
+    if (diff < 0) return 'Past';
+    if (diff < 7) return 'This Week';
+    if (diff < 14) return 'Next Week';
+    return 'Later';
+  }
+
+  const groups = { 'This Week': [], 'Next Week': [], 'Later': [], 'Past': [] };
+  events.forEach(ev => {
+    const g = getWeekGroup(ev.date);
+    groups[g].push(ev);
+  });
+
+  let html = '';
+  for (const [groupName, evs] of Object.entries(groups)) {
+    if (evs.length === 0) continue;
+    if (groupName === 'Past') continue; // hide past events
+    html += `<div class="section-hdr">${groupName}</div>`;
+    evs.forEach(ev => {
+      const dateDisplay = formatDate(ev.date) + (ev.time ? ' at ' + ev.time : '');
+      html += `<div class="event-card">
+        <button class="event-delete" onclick="deleteEvent('${ev.id}')" title="Delete">✕</button>
+        <div class="event-title">${esc(ev.title)}</div>
+        <div class="event-meta">
+          <span class="event-date">${esc(dateDisplay)}</span>
+          ${ev.with_person ? `<span class="event-with">with ${esc(ev.with_person)}</span>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+
+  if (events.filter(e => e.date >= todayStr).length === 0) {
+    html = emptyState('No upcoming events', 'Add an event below');
+  }
+
+  // Add form
+  html += `<div class="add-form-section">
+    <div class="add-form-title">Add Event</div>
+    <div class="add-form-row">
+      <input type="text" id="evTitle" placeholder="Event title" style="flex:2">
+      <input type="date" id="evDate">
+    </div>
+    <div class="add-form-row">
+      <input type="time" id="evTime" placeholder="Time (optional)">
+      <input type="text" id="evWith" placeholder="With (optional)">
+    </div>
+    <button class="add-form-btn" onclick="addEvent()">Add Event</button>
+  </div>`;
+
+  mc.innerHTML = html;
+}
+
+function addEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const date = document.getElementById('evDate').value;
+  if (!title || !date) { showToast('Title and date are required'); return; }
+  const time = document.getElementById('evTime').value || '';
+  const withPerson = document.getElementById('evWith').value.trim() || '';
+  const ev = { id: Date.now().toString(), title, date, time, with_person: withPerson, created_at: new Date().toISOString() };
+  const events = getEventsData();
+  events.push(ev);
+  saveEventsData(events);
+  showToast('Event added');
+  renderCurrentTab();
+}
+
+function deleteEvent(id) {
+  const events = getEventsData().filter(e => e.id !== id);
+  saveEventsData(events);
+  showToast('Event deleted');
+  renderCurrentTab();
+}
+
+// ─── Recurring Tracker (localStorage) ───
+function getRecurringData() {
+  try { return JSON.parse(localStorage.getItem('allison_recurring') || '[]'); }
+  catch(e) { return []; }
+}
+function saveRecurringData(arr) {
+  localStorage.setItem('allison_recurring', JSON.stringify(arr));
+}
+
+function getDaysUntilDue(r) {
+  const lastDone = r.last_done ? new Date(r.last_done + 'T00:00:00') : new Date(r.created_at.slice(0, 10) + 'T00:00:00');
+  const nextDue = new Date(lastDone);
+  nextDue.setDate(nextDue.getDate() + r.frequency_days);
+  const todayDate = new Date(today() + 'T00:00:00');
+  return Math.ceil((nextDue - todayDate) / 86400000);
+}
+
+function renderRecurring(mc) {
+  const items = getRecurringData();
+
+  // Sort: most overdue first
+  const sorted = [...items].sort((a, b) => getDaysUntilDue(a) - getDaysUntilDue(b));
+
+  let html = '';
+  if (sorted.length === 0) {
+    html = emptyState('No recurring items', 'Add habits and routines to track below');
+  } else {
+    sorted.forEach(r => {
+      const daysUntil = getDaysUntilDue(r);
+      const daysSinceDone = r.last_done ? daysAgo(r.last_done) : null;
+      let dotColor = '#2d6a4f'; // green
+      let dueText = `In ${daysUntil} days`;
+      if (daysUntil <= 0) { dotColor = '#c0392b'; dueText = 'OVERDUE'; }
+      else if (daysUntil <= 7) { dotColor = '#b5621a'; }
+
+      const lastDoneText = r.last_done ? `Last done: ${formatDate(r.last_done)}` : 'Never done';
+
+      html += `<div class="recurring-item">
+        <div class="recurring-status-dot" style="background:${dotColor}"></div>
+        <div class="recurring-body">
+          <div class="recurring-title">${esc(r.title)}</div>
+          <div class="recurring-meta">Every ${r.frequency_days} day${r.frequency_days !== 1 ? 's' : ''} · ${lastDoneText}</div>
+          <div class="recurring-due" style="color:${dotColor}">${dueText}</div>
+        </div>
+        <button class="recurring-done-btn" onclick="markRecurringDone('${r.id}')">Done</button>
+        <button class="recurring-delete-btn" onclick="deleteRecurring('${r.id}')" title="Remove">✕</button>
+      </div>`;
+    });
+  }
+
+  // Add form
+  html += `<div class="add-form-section">
+    <div class="add-form-title">Add Recurring Item</div>
+    <div class="add-form-row">
+      <input type="text" id="recTitle" placeholder="e.g. Take vitamins" style="flex:3">
+      <input type="number" id="recFreq" placeholder="Days" min="1" max="365" style="flex:1;max-width:80px">
+    </div>
+    <button class="add-form-btn" onclick="addRecurring()">Add</button>
+  </div>`;
+
+  mc.innerHTML = html;
+}
+
+function addRecurring() {
+  const title = document.getElementById('recTitle').value.trim();
+  const freq = parseInt(document.getElementById('recFreq').value);
+  if (!title || !freq || freq < 1) { showToast('Title and frequency required'); return; }
+  const r = { id: Date.now().toString(), title, frequency_days: freq, last_done: null, created_at: new Date().toISOString() };
+  const items = getRecurringData();
+  items.push(r);
+  saveRecurringData(items);
+  showToast('Added');
+  renderCurrentTab();
+}
+
+function markRecurringDone(id) {
+  const items = getRecurringData();
+  const r = items.find(x => x.id === id);
+  if (r) { r.last_done = today(); saveRecurringData(items); showToast('Marked done!'); renderCurrentTab(); }
+}
+
+function deleteRecurring(id) {
+  const items = getRecurringData().filter(x => x.id !== id);
+  saveRecurringData(items);
+  showToast('Removed');
+  renderCurrentTab();
+}
+
+// ─── Week View ───
+function renderWeek(mc) {
+  const weekDates = getWeekDates(today());
+  const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayStr = today();
+
+  let html = '<div class="week-view">';
+
+  // Show each day
+  weekDates.forEach((wd, i) => {
+    const dayTasks = tasks.filter(t => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog');
+    const isToday = wd === todayStr;
+    const d = new Date(wd + 'T00:00:00');
+    const dateLabel = d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+
+    html += `<div class="week-day-section">
+      <div class="week-col-header ${isToday ? 'today-col' : ''}">
+        ${shortDays[i]}
+        <span class="week-col-date">${dateLabel}</span>
+        ${dayTasks.length > 0 ? `<span style="font-size:.62rem;background:var(--surface2);padding:.1rem .35rem;border-radius:8px;color:var(--dim)">${dayTasks.length}</span>` : ''}
+        ${isToday ? '<span style="font-size:.62rem;color:var(--accent);font-weight:700">TODAY</span>' : ''}
+      </div>`;
+
+    if (dayTasks.length === 0) {
+      html += `<div style="font-size:.75rem;color:var(--dim);padding:.2rem .5rem;font-style:italic">Free</div>`;
+    } else {
+      dayTasks.forEach(t => {
+        const energyDot = t.energy ? `<span class="energy-dot ${t.energy}" style="width:6px;height:6px"></span>` : '';
+        html += `<div class="week-task-row" onclick="openEditModal('${t.id}')">
+          ${energyDot}
+          <span style="font-size:.82rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</span>
+          ${t.due_time ? `<span style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace">${esc(t.due_time)}</span>` : ''}
+        </div>`;
+      });
+    }
+    html += '</div>';
+  });
+
+  // Floating tasks
+  const floating = tasks.filter(t => !t.due_date && t.status === 'open');
+  html += `<div class="week-floating-section">
+    <div class="week-floating-label">Floating (no date) — ${floating.length}</div>`;
+  if (floating.length === 0) {
+    html += `<div style="font-size:.75rem;color:var(--dim);font-style:italic">None</div>`;
+  } else {
+    floating.forEach(t => {
+      const energyDot = t.energy ? `<span class="energy-dot ${t.energy}" style="width:6px;height:6px"></span>` : '';
+      html += `<div class="week-task-row" onclick="openEditModal('${t.id}')">
+        ${energyDot}
+        <span style="font-size:.82rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</span>
+      </div>`;
+    });
+  }
+  html += '</div>';
+
+  html += '</div>';
+  mc.innerHTML = html;
+}
+
+// ─── Events on My Day Timeline ───
+function getEventsForDate(dateStr) {
+  const events = getEventsData();
+  return events.filter(e => e.date === dateStr && e.time);
+}
 
 // ─── Init ───
 checkSession();
