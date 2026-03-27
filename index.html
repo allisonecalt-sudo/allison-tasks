@@ -454,7 +454,7 @@ input, select, textarea { font-family: inherit; }
   background: var(--surface); color: var(--muted); cursor: pointer;
   transition: all .15s;
 }
-.filter-chip:hover { border-color: var(--accent); }
+@media (hover: hover) { .filter-chip:hover { border-color: var(--accent); } }
 .filter-chip.active {
   background: var(--asoft); color: var(--accent);
   border-color: var(--accent); font-weight: 600;
@@ -1533,7 +1533,7 @@ function renderFocus(mc) {
   const floating = active.filter(t => !t.due_date && t.status === 'open');
 
   let html = `<div class="search-bar">
-    <input type="text" class="search-input" placeholder="Search focus items..." value="${esc(focusSearch)}" oninput="focusSearch=this.value;renderCurrentTab()">
+    <input type="text" class="search-input" placeholder="Search focus items..." value="${esc(focusSearch)}">
     <span class="search-icon">&#x1F50D;</span>
   </div>`;
 
@@ -1600,6 +1600,16 @@ function renderFocus(mc) {
     html = emptyState('All clear', 'Nothing needs your attention right now');
   }
   mc.innerHTML = html;
+  // Restore search input focus and cursor after re-render
+  const focusSearchEl = mc.querySelector('.search-input');
+  if (focusSearchEl && focusSearch) {
+    focusSearchEl.focus();
+    const len = focusSearchEl.value.length;
+    focusSearchEl.setSelectionRange(len, len);
+  }
+  focusSearchEl && focusSearchEl.addEventListener('input', function() {
+    focusSearch = this.value; renderCurrentTab();
+  });
 }
 
 // ─── Render: Streams ───
@@ -1652,7 +1662,7 @@ function renderStreams(mc) {
       </div>
       <div class="stream-bar"><div class="stream-bar-fill" style="width:${pct}%"></div></div>
       <div class="stream-tasks">
-        ${sTasks.filter(t => t.status !== 'done').map(t => renderTaskCard(t, true)).join('')}
+        ${(() => { const seen = new Set(); return sTasks.filter(t => t.status !== 'done' && !seen.has(t.id) && seen.add(t.id)).map(t => renderTaskCard(t, true)).join(''); })()}
       </div>
     </div>`;
   }
@@ -1670,7 +1680,7 @@ function renderAll(mc) {
 
   // Build search + filter UI
   let html = `<div class="search-bar">
-    <input type="text" class="search-input" placeholder="Search tasks..." value="${esc(allFilters.search)}" oninput="allFilters.search=this.value;renderCurrentTab()">
+    <input type="text" class="search-input" placeholder="Search tasks..." value="${esc(allFilters.search)}">
     <span class="search-icon">&#x1F50D;</span>
   </div>`;
 
@@ -1733,6 +1743,16 @@ function renderAll(mc) {
     html += filtered.map(t => renderTaskCard(t)).join('');
   }
   mc.innerHTML = html;
+  // Restore search input focus and cursor after re-render
+  const allSearchEl = mc.querySelector('.search-input');
+  if (allSearchEl && allFilters.search) {
+    allSearchEl.focus();
+    const len = allSearchEl.value.length;
+    allSearchEl.setSelectionRange(len, len);
+  }
+  allSearchEl && allSearchEl.addEventListener('input', function() {
+    allFilters.search = this.value; renderCurrentTab();
+  });
 }
 
 function toggleFilter(type, val) {
@@ -2109,8 +2129,25 @@ function closeModal() {
 
 // Close modal on overlay click
 document.getElementById('editModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('editModal')) closeModal();
+  if (e.target === document.getElementById('editModal')) {
+    if (hasUnsavedModalChanges()) {
+      if (!confirm('Discard unsaved changes?')) return;
+    }
+    closeModal();
+  }
 });
+
+function hasUnsavedModalChanges() {
+  if (!editingTaskId) return false;
+  const t = tasks.find(x => x.id === editingTaskId);
+  if (!t) return false;
+  if (document.getElementById('editTitle').value !== (t.title || '')) return true;
+  if (document.getElementById('editNotes').value !== (t.notes || '')) return true;
+  if (document.getElementById('editStatus').value !== (t.status || 'open')) return true;
+  if (document.getElementById('editDueDate').value !== (t.due_date || '')) return true;
+  if (document.getElementById('editDueTime').value !== (t.due_time || '')) return true;
+  return false;
+}
 
 async function saveTask() {
   if (!editingTaskId) return;
@@ -2205,19 +2242,40 @@ function closeConfirm() {
 }
 
 function confirmDeleteTask() {
-  document.getElementById('confirmText').textContent = 'Delete this task permanently?';
-  document.getElementById('confirmDialog').classList.add('visible');
-  document.getElementById('confirmYes').onclick = async () => {
-    closeConfirm();
-    if (!editingTaskId) return;
-    const { error } = await sb.from('tasks').delete().eq('id', editingTaskId);
-    if (error) { showToast('Error deleting task'); return; }
-    tasks = tasks.filter(t => t.id !== editingTaskId);
+  if (!editingTaskId) return;
+  const taskToDelete = tasks.find(t => t.id === editingTaskId);
+  if (!taskToDelete) return;
+  const deletingId = editingTaskId;
+  const originalStatus = taskToDelete.status;
+
+  // Optimistically remove from local state and close modal
+  tasks = tasks.filter(t => t.id !== deletingId);
+  localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+  closeModal();
+  renderCurrentTab();
+
+  let undone = false;
+  let deleteTimer = setTimeout(async () => {
+    if (undone) return;
+    const { error } = await sb.from('tasks').delete().eq('id', deletingId);
+    if (error) {
+      // Restore on error
+      tasks.push(taskToDelete);
+      localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+      renderCurrentTab();
+      showToast('Error deleting task');
+    }
+  }, 5000);
+
+  showToast('Task deleted', () => {
+    undone = true;
+    clearTimeout(deleteTimer);
+    // Restore task locally
+    tasks.push(taskToDelete);
     localStorage.setItem('tasks_cache', JSON.stringify(tasks));
-    showToast('Task deleted');
-    closeModal();
     renderCurrentTab();
-  };
+    showToast('Delete undone');
+  });
 }
 
 // ─── Helpers ───
