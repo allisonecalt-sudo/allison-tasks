@@ -246,6 +246,7 @@ input, select, textarea { font-family: inherit; }
 }
 .task-age { font-size: .68rem; color: var(--dim); margin-top: .25rem; }
 .task-age.stale { color: var(--amber); }
+.task-created { font-size: .68rem; color: var(--dim); margin-inline-start: .25rem; }
 
 /* ── Section Headers ── */
 .section-hdr {
@@ -955,7 +956,7 @@ const TABS = [
   { id: 'done',     label: 'Done' },
 ];
 
-let allFilters = { search: '', tags: [], energy: null, status: null };
+let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due' };
 let focusSearch = '';
 
 // ─── Date Helpers ───
@@ -1687,6 +1688,13 @@ function renderAll(mc) {
   });
   html += `</div>`;
 
+  // Sort toggle
+  html += `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center">
+    <span style="font-size:.72rem;color:var(--dim)">Sort:</span>
+    <button class="filter-chip ${allFilters.sort === 'due' ? 'active' : ''}" onclick="toggleFilter('sort','due')">Due date</button>
+    <button class="filter-chip ${allFilters.sort === 'created' ? 'active' : ''}" onclick="toggleFilter('sort','created')">Date added</button>
+  </div>`;
+
   // Apply filters
   if (allFilters.search) {
     const q = allFilters.search.toLowerCase();
@@ -1700,13 +1708,17 @@ function renderAll(mc) {
   if (allFilters.status) filtered = filtered.filter(t => t.status === allFilters.status);
   if (allFilters.tags.length) filtered = filtered.filter(t => allFilters.tags.some(ft => (t.tags || []).includes(ft)));
 
-  // Sort by due date
-  filtered.sort((a, b) => {
-    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
-    if (a.due_date) return -1;
-    if (b.due_date) return 1;
-    return (a.created_at || '').localeCompare(b.created_at || '');
-  });
+  // Sort
+  if (allFilters.sort === 'created') {
+    filtered.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  } else {
+    filtered.sort((a, b) => {
+      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return (a.created_at || '').localeCompare(b.created_at || '');
+    });
+  }
 
   if (filtered.length === 0) {
     html += emptyState('No tasks found', 'Try adjusting your filters');
@@ -1719,6 +1731,7 @@ function renderAll(mc) {
 function toggleFilter(type, val) {
   if (type === 'energy') allFilters.energy = allFilters.energy === val ? null : val;
   else if (type === 'status') allFilters.status = allFilters.status === val ? null : val;
+  else if (type === 'sort') allFilters.sort = val;
   else if (type === 'tag') {
     const idx = allFilters.tags.indexOf(val);
     if (idx >= 0) allFilters.tags.splice(idx, 1); else allFilters.tags.push(val);
@@ -1873,6 +1886,9 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
     </div>`;
   }
 
+  const createdHTML = t.created_at && !compact
+    ? `<span class="task-created">Added ${formatDate(t.created_at.slice(0,10))}</span>` : '';
+
   const notesPreview = t.notes && !compact
     ? `<div class="task-notes-preview">${esc(t.notes)}</div>` : '';
 
@@ -1886,7 +1902,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
           ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
         </div>
         <div class="task-meta">
-          ${dueHTML}${tagHTML}
+          ${dueHTML}${tagHTML}${createdHTML}
         </div>
         ${notesPreview}
         ${extraHTML}
