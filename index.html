@@ -170,7 +170,7 @@ input, select, textarea { font-family: inherit; }
   position: relative; overflow: hidden;
 }
 .task-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(26,25,21,.12); }
-.task-card.aging { border-inline-start: 3px solid var(--amber); }
+.task-card.aging { border-inline-start: 3px solid #f59e0b; }
 .task-card.done-anim {
   opacity: 0; transform: translateX(60px); transition: all .35s ease-out;
 }
@@ -1346,7 +1346,7 @@ const DASHBOARD_VIEWS = [
 ];
 let currentDashboard = 'weekly';
 
-let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due' };
+let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due', noDate: false };
 let focusSearch = '';
 
 // ─── Date Helpers ───
@@ -1486,7 +1486,7 @@ function renderRibbon() {
     { label: 'Waiting', val: waitCount, cls: '', action: () => { switchTab('focus'); } },
     { label: 'Decisions', val: decideCount, cls: decideCount > 0 ? 'blue' : '', action: () => switchTab('focus') },
     { label: 'Need Attention', val: overdueCount, cls: overdueCount > 0 ? 'amber' : '', action: () => switchTab('focus') },
-    { label: 'Floating', val: floatCount, cls: '', action: () => switchTab('all') },
+    { label: 'Floating', val: floatCount, cls: '', action: () => { switchTab('all'); allFilters.noDate = true; setTimeout(renderCurrentTab, 0); } },
     { label: 'Done (7d)', val: doneWeek, cls: '', action: () => switchTab('done') },
   ];
   window._ribbonActions = stats.map(s => s.action);
@@ -1516,7 +1516,7 @@ function renderTabBar() {
 
 function switchTab(id) {
   currentTab = id;
-  allFilters = { search: '', tags: [], energy: null, status: null };
+  allFilters = { search: '', tags: [], energy: null, status: null, noDate: false };
   focusSearch = '';
   if (id !== 'day' && dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
   if (id === 'day') viewingDate = today();
@@ -2142,6 +2142,7 @@ function renderAll(mc) {
     );
   }
   if (allFilters.energy) filtered = filtered.filter(t => t.energy === allFilters.energy);
+  if (allFilters.noDate) { filtered = filtered.filter(t => !t.due_date); }
   if (allFilters.status) filtered = filtered.filter(t => t.status === allFilters.status);
   if (allFilters.tags.length) filtered = filtered.filter(t => allFilters.tags.some(ft => (t.tags || []).includes(ft)));
 
@@ -2340,9 +2341,9 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
     ? `<div class="task-notes-preview">${esc(t.notes)}</div>` : '';
 
   const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
-  const isAging = agingDays >= 14 && t.status !== 'done' && t.status !== 'backlog';
+  const isAging = agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog';
 
-  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" onclick="openEditModal('${t.id}')">
+  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" ${isAging ? 'title="Added ' + agingDays + ' days ago"' : '' } onclick="openEditModal('${t.id}')">
     <div class="task-top">
       <div class="task-check ${checked}" onclick="event.stopPropagation();toggleDone('${t.id}','${t.status}')"></div>
       <div class="task-body">
