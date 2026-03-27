@@ -426,6 +426,12 @@ input, select, textarea { font-family: inherit; }
   border: 1px solid var(--border); border-radius: var(--r);
   font-size: .85rem;
 }
+.modal-delete {
+  padding: .65rem .8rem; background: none; color: var(--red);
+  border: 1px solid var(--rsoft); border-radius: var(--r);
+  font-size: 1rem;
+}
+.modal-delete:hover { background: var(--rsoft); }
 
 /* ── Search / Filter ── */
 .search-bar {
@@ -866,6 +872,7 @@ input, select, textarea { font-family: inherit; }
       <button class="modal-save" onclick="saveTask()">Save</button>
       <button class="modal-complete" onclick="confirmCompleteTask()">&#x2713; Complete</button>
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-delete" onclick="confirmDeleteTask()">&#x1F5D1;</button>
     </div>
   </div>
 </div>
@@ -2195,6 +2202,22 @@ function confirmCompleteTask() {
 
 function closeConfirm() {
   document.getElementById('confirmDialog').classList.remove('visible');
+}
+
+function confirmDeleteTask() {
+  document.getElementById('confirmText').textContent = 'Delete this task permanently?';
+  document.getElementById('confirmDialog').classList.add('visible');
+  document.getElementById('confirmYes').onclick = async () => {
+    closeConfirm();
+    if (!editingTaskId) return;
+    const { error } = await sb.from('tasks').delete().eq('id', editingTaskId);
+    if (error) { showToast('Error deleting task'); return; }
+    tasks = tasks.filter(t => t.id !== editingTaskId);
+    localStorage.setItem('tasks_cache', JSON.stringify(tasks));
+    showToast('Task deleted');
+    closeModal();
+    renderCurrentTab();
+  };
 }
 
 // ─── Helpers ───
