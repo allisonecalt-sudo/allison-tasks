@@ -3009,7 +3009,7 @@ function buildEnergyBudget() {
   const tHi = todayTasks.filter(t => t.energy === 'high').length;
 
   let html = `<div class="dash-card">
-    <div class="dash-card-title">Today's Energy Mix (${todayTasks.length} tasks)</div>
+    <div class="dash-card-title">Today's Energy Mix (${todayTasks.length} task${todayTasks.length !== 1 ? 's' : ''})</div>
     <div class="dash-energy-legend">
       <div class="dash-energy-legend-item"><span class="energy-dot low"></span> Low: ${tLow}</div>
       <div class="dash-energy-legend-item"><span class="energy-dot medium"></span> Med: ${tMed}</div>
