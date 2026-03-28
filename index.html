@@ -477,6 +477,7 @@ input, select, textarea { font-family: inherit; }
   align-items: center; justify-content: center; line-height: 1;
 }
 .search-clear:hover { background: var(--border); color: var(--text); }
+mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px; }
 .filter-row { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem; }
 .filter-chip {
   font-size: .7rem; font-weight: 500; padding: .25rem .55rem;
@@ -1365,6 +1366,19 @@ function matchesSearch(task, query) {
   return words.every(w => text.includes(w));
 }
 
+function highlightSearch(text) {
+  const q = allFilters.search || focusSearch || globalSearch;
+  if (!q || !text) return esc(text);
+  const escaped = esc(text);
+  const words = q.toLowerCase().split(/s+/).filter(Boolean);
+  let result = escaped;
+  words.forEach(w => {
+    const re = new RegExp('(' + w.replace(/[.*+?^${}()|[]\]/g, '\function buildSearchBar(') + ')', 'gi');
+    result = result.replace(re, '<mark class="search-hl">$1</mark>');
+  });
+  return result;
+}
+
 function buildSearchBar(varName, placeholder) {
   const val = varName === 'allFilters.search' ? allFilters.search : varName === 'focusSearch' ? focusSearch : globalSearch;
   return `<div class="search-bar">
@@ -2239,7 +2253,8 @@ function renderWaiting(mc) {
 
 // ─── Render: Floating ───
 function renderFloating(mc) {
-  const floating = tasks.filter(t => !t.due_date && t.status === 'open');
+  let floating = tasks.filter(t => !t.due_date && t.status === 'open');
+  if (globalSearch) floating = floating.filter(t => matchesSearch(t, globalSearch));
   floating.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   if (floating.length === 0) {
     mc.innerHTML = emptyState('Nothing floating', 'All open tasks have due dates');
@@ -2342,7 +2357,8 @@ let historyData = [];
 let historyLoaded = false;
 
 async function renderHistory(mc) {
-  mc.innerHTML = '<div class="section-hdr">Activity Log</div>' +
+  mc.innerHTML = buildSearchBar('globalSearch', 'Search history...') +
+    '<div class="section-hdr">Activity Log</div>' +
     '<div id="historyList"><div style="padding:2rem;text-align:center;color:var(--text2)">Loading…</div></div>' +
     '<div style="padding:1rem"><button class="btn-primary" onclick="openAddNoteModal(null)" style="width:100%">+ Add Note for Claude</button></div>';
 
@@ -2380,7 +2396,17 @@ async function renderHistory(mc) {
     return '<span style="color:var(--text2)">' + esc(h.field_changed) + ' changed</span>';
   };
 
-  list.innerHTML = historyData.map(h => {
+  let filtered = historyData;
+  if (globalSearch) {
+    const words = globalSearch.toLowerCase().split(/s+/).filter(Boolean);
+    filtered = filtered.filter(h => {
+      const text = [(h.tasks && h.tasks.title) || '', h.note || '', h.field_changed || '', h.new_value || ''].join(' ').toLowerCase();
+      return words.every(w => text.includes(w));
+    });
+  }
+  wireSearchInput(mc, 'globalSearch');
+  if (!filtered.length) { list.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text2)">No matching history</div>'; return; }
+  list.innerHTML = filtered.map(h => {
     const title = esc((h.tasks && h.tasks.title) || '(standalone note)');
     const noteHtml = h.note
       ? '<div style="font-size:.85rem;margin-top:.3rem;background:var(--surface2);padding:.4rem .6rem;border-radius:.4rem;color:var(--text)">📎 ' + esc(h.note) + '</div>'
@@ -2394,7 +2420,7 @@ async function renderHistory(mc) {
           noteHtml +
           '<div style="font-size:.75rem;color:var(--text3);margin-top:.25rem">' + fmt(h.changed_at) + '</div>' +
         '</div>' +
-        '<button onclick="openAddNoteModal('' + h.id + '')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.8rem;padding:.2rem .4rem;border-radius:.3rem" title="Add note">📎</button>' +
+        '<button onclick="openAddNoteModal(&#39;' + h.id + '&#39;)" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.8rem;padding:.2rem .4rem;border-radius:.3rem" title="Add note">📎</button>' +
       '</div>'
     );
   }).join('');
@@ -2410,8 +2436,8 @@ function openAddNoteModal(historyId) {
       '<div style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem">Claude reads these at session start — context, decisions, what happened offline.</div>' +
       '<textarea id="histNoteInput" style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);border-radius:.5rem;padding:.6rem;color:var(--text);font-size:.9rem;resize:vertical;box-sizing:border-box" placeholder="e.g. did this offline, talked to Reuven about this, cancelled because..." dir="auto"></textarea>' +
       '<div style="display:flex;gap:.75rem;margin-top:1rem">' +
-        '<button onclick="document.querySelector('.history-note-modal').remove()" style="flex:1;padding:.6rem;background:var(--surface2);border:none;border-radius:.5rem;cursor:pointer;color:var(--text)">Cancel</button>' +
-        '<button onclick="saveHistoryNote('' + historyId + '', this)" style="flex:1;padding:.6rem;background:var(--accent);border:none;border-radius:.5rem;cursor:pointer;color:#fff;font-weight:600">Save</button>' +
+        '<button onclick="document.querySelector(&#39;.history-note-modal&#39;).remove()" style="flex:1;padding:.6rem;background:var(--surface2);border:none;border-radius:.5rem;cursor:pointer;color:var(--text)">Cancel</button>' +
+        '<button onclick="saveHistoryNote(&#39;' + historyId + '&#39;, this)" style="flex:1;padding:.6rem;background:var(--accent);border:none;border-radius:.5rem;cursor:pointer;color:#fff;font-weight:600">Save</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(modal);
@@ -2484,7 +2510,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
     ? `<span class="task-created">Added ${formatDate(t.created_at.slice(0,10))}</span>` : '';
 
   const notesPreview = t.notes && !compact
-    ? `<div class="task-notes-preview">${esc(t.notes)}</div>` : '';
+    ? `<div class="task-notes-preview">${highlightSearch(t.notes)}</div>` : '';
 
   const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
   const isAging = agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog';
@@ -2495,7 +2521,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
       <div class="task-body">
         <div class="task-title-row">
           ${t.energy ? `<span class="energy-dot ${t.energy}"></span>` : ''}
-          <span class="task-title">${esc(t.title)}</span>
+          <span class="task-title">${highlightSearch(t.title)}</span>
           ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
         </div>
         <div class="task-meta">
@@ -3004,6 +3030,7 @@ function renderDashboards(mc) {
       onclick="switchDashboard('${d.id}')">${d.label}</button>`;
   });
   html += `</div>`;
+  html += buildSearchBar('globalSearch', 'Search dashboards...');
 
   switch (currentDashboard) {
     case 'weekly':  html += buildWeeklyPlanning(); break;
@@ -3016,6 +3043,7 @@ function renderDashboards(mc) {
   }
 
   mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
 
 function switchDashboard(id) {
@@ -3043,7 +3071,8 @@ function buildWeeklyPlanning() {
 
   html += `<div class="dash-card" style="padding:.5rem .75rem">`;
   weekDates.forEach((wd, i) => {
-    const dayTasks = tasks.filter(t => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog');
+    let dayTasks = tasks.filter(t => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog');
+    if (globalSearch) dayTasks = dayTasks.filter(t => matchesSearch(t, globalSearch));
     const count = dayTasks.length;
     const isToday = wd === todayStr;
     const overloaded = count >= 5;
@@ -3787,7 +3816,8 @@ function renderWeekTab(mc) {
   const weekDates = getWeekDates(today());
   const shortDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const todayStr = today();
-  let html = '<div class="week-view-tab">';
+  let html = buildSearchBar('globalSearch', 'Search week...');
+  html += '<div class="week-view-tab">';
   weekDates.forEach((wd, i) => {
     const dayTasks = tasks.filter(t => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog');
     const isToday = wd === todayStr;
@@ -3829,7 +3859,17 @@ function renderWeekTab(mc) {
   }
   html += '</div></div>';
   mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
+
+// ─── Global Keyboard Shortcuts ───
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) { searchInput.focus(); searchInput.select(); }
+  }
+});
 
 // ─── Init ───
 checkSession();
