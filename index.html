@@ -1605,7 +1605,7 @@ function updateTabCounts() {
     focus: focusCount,
     all: tasks.filter(t => t.status !== 'done' && t.status !== 'backlog').length,
     streams: '',
-    week: '',
+    week: (() => { const wk=[]; for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()+i);wk.push(localDateStr(d));} return tasks.filter(t=>t.status!=='done'&&t.status!=='backlog'&&wk.includes(t.due_date)).length; })() || '',
     events: eventsData.filter(e => e.date >= today()).length || '',
     recurring: overdueRecurring || '',
     done: (() => { const a=new Date();a.setDate(a.getDate()-30);return tasks.filter(t=>t.status==='done'&&t.completed_at&&new Date(t.completed_at)>=a).length; })(),
