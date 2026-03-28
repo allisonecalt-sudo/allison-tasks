@@ -251,6 +251,7 @@ input, select, textarea { font-family: inherit; }
 .task-age { font-size: .68rem; color: var(--dim); margin-top: .25rem; }
 .task-age.stale { color: var(--amber); }
 .task-created { font-size: .68rem; color: var(--dim); margin-inline-start: .25rem; }
+.task-edited { font-size: .68rem; color: var(--dim); margin-inline-start: .25rem; font-style: italic; }
 
 /* ── Section Headers ── */
 .section-hdr {
@@ -1199,7 +1200,7 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
   .modal-input, .modal-textarea, .modal-select {
     font-size: 16px;
   }
-  .task-created { font-size: .72rem; }
+  .task-created, .task-edited { font-size: .72rem; }
   .filter-chip {
     font-size: .75rem; min-height: 36px;
     padding: .35rem .6rem; display: inline-flex; align-items: center;
@@ -1573,6 +1574,21 @@ function formatDateLong(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+function timeAgo(isoStr) {
+  if (!isoStr) return '';
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  return formatDate(isoStr.slice(0, 10));
 }
 function isOverdue(t) { return t.due_date && t.due_date < today() && t.status !== 'done'; }
 function isToday(t) { return t.due_date === today(); }
@@ -2311,6 +2327,7 @@ function renderAll(mc) {
     <span style="font-size:.72rem;color:var(--dim)">Sort:</span>
     <button class="filter-chip ${allFilters.sort === 'due' ? 'active' : ''}" onclick="toggleFilter('sort','due')">Due date</button>
     <button class="filter-chip ${allFilters.sort === 'created' ? 'active' : ''}" onclick="toggleFilter('sort','created')">Date added</button>
+    <button class="filter-chip ${allFilters.sort === 'edited' ? 'active' : ''}" onclick="toggleFilter('sort','edited')">Last edited</button>
   </div>`;
 
   // Apply filters
@@ -2323,7 +2340,9 @@ function renderAll(mc) {
   if (allFilters.tags.length) filtered = filtered.filter(t => allFilters.tags.some(ft => (t.tags || []).includes(ft)));
 
   // Sort
-  if (allFilters.sort === 'created') {
+  if (allFilters.sort === 'edited') {
+    filtered.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+  } else if (allFilters.sort === 'created') {
     filtered.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   } else {
     filtered.sort((a, b) => {
@@ -2641,6 +2660,9 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
   const createdHTML = t.created_at && !compact
     ? `<span class="task-created">Added ${formatDate(t.created_at.slice(0,10))}</span>` : '';
 
+  const editedHTML = t.updated_at && !compact && t.updated_at !== t.created_at
+    ? `<span class="task-edited">Edited ${timeAgo(t.updated_at)}</span>` : '';
+
   const notesPreview = t.notes && !compact
     ? `<div class="task-notes-preview">${highlightSearch(t.notes)}</div>` : '';
 
@@ -2657,7 +2679,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
           ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
         </div>
         <div class="task-meta">
-          ${dueHTML}${tagHTML}${createdHTML}
+          ${dueHTML}${tagHTML}${createdHTML}${editedHTML}
         </div>
         ${notesPreview}
         ${extraHTML}
