@@ -461,15 +461,22 @@ input, select, textarea { font-family: inherit; }
   position: relative; margin-bottom: .75rem;
 }
 .search-input {
-  width: 100%; padding: .6rem .75rem .6rem 2.2rem;
+  width: 100%; padding: .6rem 2rem .6rem 2.2rem;
   border: 1px solid var(--border); border-radius: var(--r);
   font-size: .85rem; background: var(--surface); outline: none;
 }
 .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--asoft); }
 .search-icon {
-  position: absolute; top: 50%; right: .75rem; transform: translateY(-50%);
-  color: var(--dim); font-size: .9rem; pointer-events: none;
+  position: absolute; top: 50%; left: .75rem; transform: translateY(-50%);
+  color: var(--dim); font-size: .85rem; pointer-events: none;
 }
+.search-clear {
+  position: absolute; top: 50%; right: .6rem; transform: translateY(-50%);
+  background: var(--surface3); border: none; border-radius: 50%; width: 20px; height: 20px;
+  font-size: .7rem; color: var(--muted); cursor: pointer; display: flex;
+  align-items: center; justify-content: center; line-height: 1;
+}
+.search-clear:hover { background: var(--border); color: var(--text); }
 .filter-row { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem; }
 .filter-chip {
   font-size: .7rem; font-weight: 500; padding: .25rem .55rem;
@@ -477,7 +484,7 @@ input, select, textarea { font-family: inherit; }
   background: var(--surface); color: var(--muted); cursor: pointer;
   transition: all .15s;
 }
-@media (hover: hover) { .filter-chip:hover { border-color: var(--accent); } }
+@media (hover: hover) and (pointer: fine) { .filter-chip:hover { border-color: var(--accent); } }
 .filter-chip.active {
   background: var(--asoft); color: var(--accent);
   border-color: var(--accent); font-weight: 600;
@@ -1349,6 +1356,48 @@ let currentDashboard = 'weekly';
 
 let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due', noDate: false };
 let focusSearch = '';
+let globalSearch = '';
+
+function matchesSearch(task, query) {
+  if (!query) return true;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const text = [task.title || '', task.notes || '', ...(task.tags || [])].join(' ').toLowerCase();
+  return words.every(w => text.includes(w));
+}
+
+function buildSearchBar(varName, placeholder) {
+  const val = varName === 'allFilters.search' ? allFilters.search : varName === 'focusSearch' ? focusSearch : globalSearch;
+  return `<div class="search-bar">
+    <span class="search-icon">&#x1F50D;</span>
+    <input type="text" class="search-input" data-search-var="${varName}" placeholder="${placeholder}" value="${esc(val)}">
+    ${val ? `<button class="search-clear" onclick="${varName}='';renderCurrentTab();">&times;</button>` : ''}
+  </div>`;
+}
+
+let _searchTimer = null;
+function wireSearchInput(container, varName) {
+  const el = container.querySelector('.search-input[data-search-var="' + varName + '"]');
+  if (!el) return;
+  const val = varName === 'allFilters.search' ? allFilters.search : varName === 'focusSearch' ? focusSearch : globalSearch;
+  if (val) { el.focus(); const len = el.value.length; el.setSelectionRange(len, len); }
+  el.addEventListener('input', function() {
+    const v = this.value;
+    if (varName === 'allFilters.search') allFilters.search = v;
+    else if (varName === 'focusSearch') focusSearch = v;
+    else globalSearch = v;
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(renderCurrentTab, 150);
+  });
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      if (varName === 'allFilters.search') allFilters.search = '';
+      else if (varName === 'focusSearch') focusSearch = '';
+      else globalSearch = '';
+      clearTimeout(_searchTimer);
+      renderCurrentTab();
+    }
+  });
+}
 
 // ─── Date Helpers ───
 function localDateStr(d) {
@@ -1519,6 +1568,7 @@ function switchTab(id) {
   currentTab = id;
   allFilters = { search: '', tags: [], energy: null, status: null, noDate: false };
   focusSearch = '';
+  globalSearch = '';
   if (id !== 'day' && dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
   if (id === 'day') viewingDate = today();
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
@@ -1939,12 +1989,7 @@ function renderFocus(mc) {
 
   // Search filter
   if (focusSearch) {
-    const q = focusSearch.toLowerCase();
-    active = active.filter(t =>
-      t.title?.toLowerCase().includes(q) ||
-      t.notes?.toLowerCase().includes(q) ||
-      (t.tags || []).some(tag => tag.toLowerCase().includes(q))
-    );
+    active = active.filter(t => matchesSearch(t, focusSearch));
   }
 
   const overdue = active.filter(t => isOverdue(t)).sort((a,b) => (a.due_date||'').localeCompare(b.due_date||''));
@@ -1954,10 +1999,7 @@ function renderFocus(mc) {
   const waiting = active.filter(t => t.status === 'waiting');
   const floating = active.filter(t => !t.due_date && t.status === 'open');
 
-  let html = `<div class="search-bar">
-    <input type="text" class="search-input" placeholder="Search focus items..." value="${esc(focusSearch)}">
-    <span class="search-icon">&#x1F50D;</span>
-  </div>`;
+  let html = buildSearchBar('focusSearch', 'Search focus items...');
 
   // Need Attention (overdue)
   if (overdue.length > 0) {
@@ -2022,21 +2064,13 @@ function renderFocus(mc) {
     html = emptyState('All clear', 'Nothing needs your attention right now');
   }
   mc.innerHTML = html;
-  // Restore search input focus and cursor after re-render
-  const focusSearchEl = mc.querySelector('.search-input');
-  if (focusSearchEl && focusSearch) {
-    focusSearchEl.focus();
-    const len = focusSearchEl.value.length;
-    focusSearchEl.setSelectionRange(len, len);
-  }
-  focusSearchEl && focusSearchEl.addEventListener('input', function() {
-    focusSearch = this.value; renderCurrentTab();
-  });
+  wireSearchInput(mc, 'focusSearch');
 }
 
 // ─── Render: Streams ───
 function renderStreams(mc) {
-  const active = tasks.filter(t => t.status !== 'backlog');
+  let active = tasks.filter(t => t.status !== 'backlog');
+  if (globalSearch) active = active.filter(t => matchesSearch(t, globalSearch));
   const streams = {};
   active.forEach(t => {
     const areaTags = (t.tags || []).filter(tag => {
@@ -2049,11 +2083,12 @@ function renderStreams(mc) {
   });
 
   if (Object.keys(streams).length === 0) {
-    mc.innerHTML = emptyState('No streams', 'Tasks with area tags will appear as streams');
+    mc.innerHTML = buildSearchBar('globalSearch', 'Search streams...') + emptyState('No streams', globalSearch ? 'Try a different search' : 'Tasks with area tags will appear as streams');
+    wireSearchInput(mc, 'globalSearch');
     return;
   }
 
-  let html = '';
+  let html = buildSearchBar('globalSearch', 'Search streams...');
   const sortedStreams = Object.entries(streams).sort((a,b) => b[1].length - a[1].length);
   for (const [name, sTasks] of sortedStreams) {
     const done = sTasks.filter(t => t.status === 'done').length;
@@ -2089,6 +2124,7 @@ function renderStreams(mc) {
     </div>`;
   }
   mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
 
 function toggleStream(el) {
@@ -2101,10 +2137,7 @@ function renderAll(mc) {
   let filtered = tasks.filter(t => t.status !== 'done');
 
   // Build search + filter UI
-  let html = `<div class="search-bar">
-    <input type="text" class="search-input" placeholder="Search tasks..." value="${esc(allFilters.search)}">
-    <span class="search-icon">&#x1F50D;</span>
-  </div>`;
+  let html = buildSearchBar('allFilters.search', 'Search tasks...');
 
   // Filter chips
   const energies = ['low', 'medium', 'high'];
@@ -2136,12 +2169,7 @@ function renderAll(mc) {
 
   // Apply filters
   if (allFilters.search) {
-    const q = allFilters.search.toLowerCase();
-    filtered = filtered.filter(t =>
-      t.title?.toLowerCase().includes(q) ||
-      t.notes?.toLowerCase().includes(q) ||
-      (t.tags || []).some(tag => tag.toLowerCase().includes(q))
-    );
+    filtered = filtered.filter(t => matchesSearch(t, allFilters.search));
   }
   if (allFilters.energy) filtered = filtered.filter(t => t.energy === allFilters.energy);
   if (allFilters.noDate) { filtered = filtered.filter(t => !t.due_date); }
@@ -2166,16 +2194,7 @@ function renderAll(mc) {
     html += filtered.map(t => renderTaskCard(t)).join('');
   }
   mc.innerHTML = html;
-  // Restore search input focus and cursor after re-render
-  const allSearchEl = mc.querySelector('.search-input');
-  if (allSearchEl && allFilters.search) {
-    allSearchEl.focus();
-    const len = allSearchEl.value.length;
-    allSearchEl.setSelectionRange(len, len);
-  }
-  allSearchEl && allSearchEl.addEventListener('input', function() {
-    allFilters.search = this.value; renderCurrentTab();
-  });
+  wireSearchInput(mc, 'allFilters.search');
 }
 
 function toggleFilter(type, val) {
@@ -2285,17 +2304,21 @@ function renderBacklog(mc) {
 // ─── Render: Done ───
 function renderDone(mc) {
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const done = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo);
+  let done = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo);
   done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+  if (globalSearch) done = done.filter(t => matchesSearch(t, globalSearch));
+  let html = buildSearchBar('globalSearch', 'Search completed tasks...');
   if (done.length === 0) {
-    mc.innerHTML = emptyState('No completed tasks', 'Mark tasks done and they will appear here');
-    return;
+    html += emptyState('No completed tasks', globalSearch ? 'Try a different search' : 'Mark tasks done and they will appear here');
+  } else {
+    html += `<div class="section-hdr">Last 30 days</div>` +
+      done.map(t => {
+        const extra = `<div class="task-age">Completed ${t.completed_at ? formatDateLong(t.completed_at.slice(0,10)) : ''}</div>`;
+        return renderTaskCard(t, false, extra, false, true);
+      }).join('');
   }
-  mc.innerHTML = `<div class="section-hdr">Last 30 days</div>` +
-    done.map(t => {
-      const extra = `<div class="task-age">Completed ${t.completed_at ? formatDateLong(t.completed_at.slice(0,10)) : ''}</div>`;
-      return renderTaskCard(t, false, extra, false, true);
-    }).join('');
+  mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
 
 
@@ -3601,19 +3624,30 @@ document.getElementById('blockTitle').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveNewBlock();
 });
 
-// ─── Events (localStorage) ───
+// ─── Events (localStorage, cached) ───
+let _eventsCache = null;
+let _recurringCache = null;
 function getEventsData() {
-  try { return JSON.parse(localStorage.getItem('allison_events') || '[]'); }
-  catch(e) { return []; }
+  if (_eventsCache) return _eventsCache;
+  try { _eventsCache = JSON.parse(localStorage.getItem('allison_events') || '[]'); }
+  catch(e) { _eventsCache = []; }
+  return _eventsCache;
 }
-function saveEventsData(arr) { localStorage.setItem('allison_events', JSON.stringify(arr)); }
+function saveEventsData(arr) { _eventsCache = arr; localStorage.setItem('allison_events', JSON.stringify(arr)); }
 
 function getEventsForDate(dateStr) {
   return getEventsData().filter(e => e.date === dateStr && e.time);
 }
 
 function renderEvents(mc) {
-  const events = getEventsData().sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+  let events = getEventsData().sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+  if (globalSearch) {
+    const words = globalSearch.toLowerCase().split(/s+/).filter(Boolean);
+    events = events.filter(ev => {
+      const text = [ev.title || '', ev.with_person || ''].join(' ').toLowerCase();
+      return words.every(w => text.includes(w));
+    });
+  }
   const todayStr = today();
   function getWeekGroup(dateStr) {
     const diff = Math.floor((new Date(dateStr+'T00:00:00') - new Date(todayStr+'T00:00:00')) / 86400000);
@@ -3624,7 +3658,7 @@ function renderEvents(mc) {
   }
   const groups = { 'This Week': [], 'Next Week': [], 'Later': [] };
   events.forEach(ev => { const g = getWeekGroup(ev.date); if (groups[g]) groups[g].push(ev); });
-  let html = '';
+  let html = buildSearchBar('globalSearch', 'Search events...');
   for (const [groupName, evs] of Object.entries(groups)) {
     if (!evs.length) continue;
     html += `<div class="section-hdr">${groupName}</div>`;
@@ -3640,7 +3674,7 @@ function renderEvents(mc) {
       </div>`;
     });
   }
-  if (!events.filter(e => e.date >= todayStr).length) html = emptyState('No upcoming events', 'Add an event below');
+  if (!events.filter(e => e.date >= todayStr).length) html += emptyState('No upcoming events', globalSearch ? 'Try a different search' : 'Add an event below');
   html += `<div class="add-form-section">
     <div class="add-form-title">Add Event</div>
     <div class="add-form-row">
@@ -3654,6 +3688,7 @@ function renderEvents(mc) {
     <button class="add-form-btn" onclick="addEvent()">Add Event</button>
   </div>`;
   mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
 
 function addEvent() {
@@ -3674,10 +3709,12 @@ function deleteEvent(id) {
 
 // ─── Recurring Tracker (localStorage) ───
 function getRecurringData() {
-  try { return JSON.parse(localStorage.getItem('allison_recurring') || '[]'); }
-  catch(e) { return []; }
+  if (_recurringCache) return _recurringCache;
+  try { _recurringCache = JSON.parse(localStorage.getItem('allison_recurring') || '[]'); }
+  catch(e) { _recurringCache = []; }
+  return _recurringCache;
 }
-function saveRecurringData(arr) { localStorage.setItem('allison_recurring', JSON.stringify(arr)); }
+function saveRecurringData(arr) { _recurringCache = arr; localStorage.setItem('allison_recurring', JSON.stringify(arr)); }
 
 function getDaysUntilDue(r) {
   const lastDone = r.last_done ? new Date(r.last_done+'T00:00:00') : new Date(r.created_at.slice(0,10)+'T00:00:00');
@@ -3686,9 +3723,13 @@ function getDaysUntilDue(r) {
 }
 
 function renderRecurring(mc) {
-  const items = getRecurringData();
+  let items = getRecurringData();
+  if (globalSearch) {
+    const words = globalSearch.toLowerCase().split(/s+/).filter(Boolean);
+    items = items.filter(r => words.every(w => (r.title || '').toLowerCase().includes(w)));
+  }
   const sorted = [...items].sort((a, b) => getDaysUntilDue(a) - getDaysUntilDue(b));
-  let html = '';
+  let html = buildSearchBar('globalSearch', 'Search recurring...');
   if (!sorted.length) { html = emptyState('No recurring items', 'Add habits and routines to track below'); }
   else {
     sorted.forEach(r => {
@@ -3718,6 +3759,7 @@ function renderRecurring(mc) {
     <button class="add-form-btn" onclick="addRecurring()">Add</button>
   </div>`;
   mc.innerHTML = html;
+  wireSearchInput(mc, 'globalSearch');
 }
 
 function addRecurring() {
