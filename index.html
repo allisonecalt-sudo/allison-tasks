@@ -1524,7 +1524,7 @@ async function refreshData() {
     ]);
     if (tasksRes.error) throw tasksRes.error;
     if (tagsRes.error) throw tagsRes.error;
-    tasks = tasksRes.data || [];
+    tasks = (tasksRes.data || []).map(t => t.status === 'todo' ? { ...t, status: 'open' } : t);
     tagDefs = tagsRes.data || [];
     localStorage.setItem('tasks_cache', JSON.stringify(tasks));
     localStorage.setItem('tags_cache', JSON.stringify(tagDefs));
@@ -3672,6 +3672,21 @@ function buildTriageInbox() {
     if (noTags.length > 10) html += '<div style="font-size:.7rem;color:var(--dim);padding:.3rem .5rem">+ ' + (noTags.length - 10) + ' more</div>';
   }
   html += '</div>';
+
+  // Duplicate detection
+  const titleMap = {};
+  tasks.filter(t => t.status !== 'done').forEach(t => {
+    titleMap[t.title] = (titleMap[t.title] || 0) + 1;
+  });
+  const dupes = Object.entries(titleMap).filter(([_,c]) => c > 1);
+  if (dupes.length > 0) {
+    html += '<div class="dash-card" style="border-left:3px solid var(--amber)"><div class="dash-card-title" style="color:var(--amber)">Possible duplicates</div>';
+    dupes.forEach(([title, cnt]) => {
+      html += '<div class="dash-inline-task"><span class="dash-badge amber">' + cnt + 'x</span> <span>' + esc(title) + '</span></div>';
+    });
+    html += '</div>';
+  }
+
   return html;
 }
 
