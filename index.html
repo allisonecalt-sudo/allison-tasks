@@ -591,7 +591,7 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
 /* ── Week Overview ── */
 .week-overview {
   display: flex; justify-content: center; gap: .35rem;
-  padding: .25rem .5rem .5rem;
+  padding: .25rem .5rem .5rem; direction: ltr;
 }
 .week-dot {
   display: flex; flex-direction: column; align-items: center;
@@ -1345,15 +1345,16 @@ const TABS = [
 ];
 
 const DASHBOARD_VIEWS = [
+  { id: 'triage',   label: 'Triage' },
+  { id: 'overload', label: 'Overload' },
   { id: 'weekly',   label: 'Weekly' },
   { id: 'energy',   label: 'Energy' },
   { id: 'waiting',  label: 'Waiting' },
   { id: 'health',   label: 'Streams' },
   { id: 'backlog',  label: 'Backlog' },
   { id: 'review',   label: 'Daily Review' },
-  { id: 'tags',     label: 'Tags' },
 ];
-let currentDashboard = 'weekly';
+let currentDashboard = 'triage';
 
 let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due', noDate: false };
 let focusSearch = '';
@@ -1602,12 +1603,12 @@ function updateTabCounts() {
   const counts = {
     day: tasks.filter(t => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog').length + getRecurringForDate(viewingDate).length,
     focus: focusCount,
-    all: tasks.filter(t => t.status !== 'done').length,
+    all: tasks.filter(t => t.status !== 'done' && t.status !== 'backlog').length,
     streams: '',
     week: '',
     events: eventsData.filter(e => e.date >= today()).length || '',
     recurring: overdueRecurring || '',
-    done: tasks.filter(t => t.status === 'done').length,
+    done: (() => { const a=new Date();a.setDate(a.getDate()-30);return tasks.filter(t=>t.status==='done'&&t.completed_at&&new Date(t.completed_at)>=a).length; })(),
     dashboards: '',
   };
   TABS.forEach(t => {
@@ -3034,13 +3035,14 @@ function renderDashboards(mc) {
   html += buildSearchBar('globalSearch', 'Search dashboards...');
 
   switch (currentDashboard) {
+    case 'triage':  html += buildTriageInbox(); break;
+    case 'overload': html += buildOverloadDetector(); break;
     case 'weekly':  html += buildWeeklyPlanning(); break;
     case 'energy':  html += buildEnergyBudget(); break;
     case 'waiting': html += buildWaitingTracker(); break;
     case 'health':  html += buildStreamHealth(); break;
     case 'backlog': html += buildBacklogReview(); break;
     case 'review':  html += buildDailyReview(); break;
-    case 'tags':    html += buildTagIntelligence(); break;
   }
 
   mc.innerHTML = html;
@@ -3405,6 +3407,29 @@ function buildStreamHealth() {
     </div>`;
   }
 
+  // Tag co-occurrence (merged from Tags)
+  const openTagged = tasks.filter(t => t.status !== "done" && t.status !== "backlog");
+  const tagPairs = {};
+  openTagged.forEach(t => {
+    const tgs = t.tags || [];
+    for (let i = 0; i < tgs.length; i++)
+      for (let j = i + 1; j < tgs.length; j++) {
+        const key = [tgs[i], tgs[j]].sort().join(" + ");
+        tagPairs[key] = (tagPairs[key] || 0) + 1;
+      }
+  });
+  const topPairs = Object.entries(tagPairs).sort((a,b) => b[1]-a[1]).slice(0,5);
+  if (topPairs.length > 0) {
+    html += '<div class="dash-card"><div class="dash-card-title">Top tag pairs</div>';
+    topPairs.forEach(([pair, cnt]) => {
+      const parts = pair.split(" + ");
+      html += '<div class="dash-pair"><span class="tag-pill">' + esc(parts[0]) + '</span>' +
+        '<span style="color:var(--dim);font-size:.7rem">+</span>' +
+        '<span class="tag-pill">' + esc(parts[1]) + '</span>' +
+        '<span class="dash-pair-count">' + cnt + '</span></div>';
+    });
+    html += '</div>';
+  }
   return html;
 }
 
@@ -3513,6 +3538,31 @@ function buildDailyReview() {
     <span>day${streak !== 1 ? 's' : ''} in a row with at least 1 completion</span>
   </div>`;
 
+
+  // Velocity sparkline - last 14 days
+  const sparkDays = [];
+  for (let i = 13; i >= 0; i--) {
+    const sd = new Date(); sd.setDate(sd.getDate() - i);
+    const ds = localDateStr(sd);
+    const cnt = tasks.filter(t => t.status === "done" && t.completed_at && t.completed_at.slice(0,10) === ds).length;
+    sparkDays.push({ date: ds, count: cnt });
+  }
+  const sparkMax = Math.max(...sparkDays.map(d => d.count), 1);
+  html += '<div class="dash-card" style="padding:.5rem .6rem">';
+  html += '<div class="dash-card-title" style="margin-bottom:.3rem">Velocity \u2014 last 14 days</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:2px;height:40px">';
+  sparkDays.forEach(d => {
+    const h = Math.max(d.count / sparkMax * 36, d.count > 0 ? 4 : 1);
+    const isTd = d.date === todayStr;
+    html += '<div title="' + d.date + ": " + d.count + ' done" style="' +
+      'flex:1;height:' + h + 'px;border-radius:2px;' +
+      'background:' + (isTd ? "var(--accent)" : d.count > 0 ? "var(--abright)" : "var(--surface3)") + ';' +
+      'opacity:' + (isTd ? 1 : 0.7) + ';' +
+      '"></div>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:.55rem;color:var(--dim);margin-top:.2rem">';
+  html += '<span>14d ago</span><span>today</span></div></div>';
   // Completed today
   html += `<div class="dash-review-section">
     <div class="dash-section-hdr">Completed today (${completedToday.length})</div>`;
@@ -3566,6 +3616,131 @@ function buildDailyReview() {
   }
   html += `</div>`;
 
+  return html;
+}
+
+
+// ── Dashboard: Triage Inbox ──
+function buildTriageInbox() {
+  const unsorted = tasks.filter(t =>
+    t.status === "open" && !t.due_date && !(t.tags||[]).length && !t.energy
+  );
+  const needsEnergy = tasks.filter(t =>
+    t.status !== "done" && t.status !== "backlog" && !t.energy
+  );
+  const noTags = tasks.filter(t =>
+    t.status !== "done" && t.status !== "backlog" && !(t.tags||[]).length
+  );
+
+  let html = '<div class="dash-card"><div class="dash-card-title">Fully unsorted (no date, tags, or energy)</div>';
+  if (unsorted.length === 0) {
+    html += '<div class="dash-review-empty" style="color:var(--green)">\u2728 Inbox zero \u2014 everything is sorted!</div>';
+  } else {
+    html += '<div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">' + unsorted.length + ' task' + (unsorted.length !== 1 ? 's' : '') + ' need attention</div>';
+    unsorted.forEach(t => {
+      html += '<div class="dash-inline-task" onclick="openEditModal(\'' + t.id + '\')">' +
+        '<span style="color:var(--amber)">\u25CB</span> ' +
+        '<span>' + esc(t.title) + '</span></div>';
+    });
+  }
+  html += '</div>';
+
+  html += '<div class="dash-card"><div class="dash-card-title">Missing energy level (' + needsEnergy.length + ')</div>';
+  if (needsEnergy.length === 0) {
+    html += '<div class="dash-review-empty" style="color:var(--green)">All tasks have energy levels!</div>';
+  } else {
+    needsEnergy.slice(0, 10).forEach(t => {
+      html += '<div class="dash-inline-task" onclick="openEditModal(\'' + t.id + '\')">' +
+        '<span style="color:var(--dim)">\u26A1</span> ' +
+        '<span>' + esc(t.title) + '</span></div>';
+    });
+    if (needsEnergy.length > 10) html += '<div style="font-size:.7rem;color:var(--dim);padding:.3rem .5rem">+ ' + (needsEnergy.length - 10) + ' more</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="dash-card"><div class="dash-card-title">No tags (' + noTags.length + ')</div>';
+  if (noTags.length === 0) {
+    html += '<div class="dash-review-empty" style="color:var(--green)">All tasks are tagged!</div>';
+  } else {
+    noTags.slice(0, 10).forEach(t => {
+      html += '<div class="dash-inline-task" onclick="openEditModal(\'' + t.id + '\')">' +
+        '<span style="color:var(--dim)">\u{1F3F7}</span> ' +
+        '<span>' + esc(t.title) + '</span>' +
+        (t.energy ? '<span class="energy-dot ' + t.energy + '"></span>' : '') +
+        '</div>';
+    });
+    if (noTags.length > 10) html += '<div style="font-size:.7rem;color:var(--dim);padding:.3rem .5rem">+ ' + (noTags.length - 10) + ' more</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+
+// ── Dashboard: Overload Detector ──
+function buildOverloadDetector() {
+  const todayStr = today();
+  const active = tasks.filter(t => t.status !== "done" && t.status !== "backlog");
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const ds = localDateStr(d);
+    const dayTasks = active.filter(t => t.due_date === ds);
+    days.push({ date: ds, tasks: dayTasks, count: dayTasks.length });
+  }
+  const maxPerDay = Math.max(...days.map(d => d.count), 1);
+  const OVERLOAD_THRESHOLD = 5;
+  const energyByDay = days.map(d => {
+    const high = d.tasks.filter(t => t.energy === "high").length;
+    return { ...d, high };
+  });
+  const overdue = active.filter(t => t.due_date && t.due_date < todayStr);
+  const noDate = active.filter(t => !t.due_date);
+
+  let html = "";
+  if (overdue.length > 0) {
+    html += '<div class="dash-card" style="border-left:3px solid var(--red)">' +
+      '<div class="dash-card-title" style="color:var(--red)">\u{1F6A8} ' + overdue.length + ' overdue</div>';
+    overdue.slice(0, 8).forEach(t => {
+      const age = Math.round((new Date(todayStr) - new Date(t.due_date)) / 86400000);
+      html += '<div class="dash-inline-task" onclick="openEditModal(\'' + t.id + '\')">' +
+        '<span class="dash-badge red">' + age + 'd late</span> ' +
+        '<span>' + esc(t.title) + '</span></div>';
+    });
+    if (overdue.length > 8) html += '<div style="font-size:.7rem;color:var(--dim);padding:.3rem .5rem">+ ' + (overdue.length - 8) + ' more</div>';
+    html += '</div>';
+  }
+
+  html += '<div class="dash-card"><div class="dash-card-title">Next 7 days \u2014 task load</div>';
+  const shortDays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  energyByDay.forEach(d => {
+    const dt = new Date(d.date + "T00:00:00");
+    const dayLabel = d.date === todayStr ? "Today" : shortDays[dt.getDay()];
+    const pct = Math.round(d.count / Math.max(maxPerDay, OVERLOAD_THRESHOLD) * 100);
+    const overloaded = d.count >= OVERLOAD_THRESHOLD;
+    html += '<div class="dash-hbar-wrap">' +
+      '<div class="dash-hbar-label"><span>' + dayLabel + (overloaded ? ' \u{1F525}' : '') + '</span>' +
+      '<span style="color:var(--muted);font-size:.7rem">' + d.count +
+        (d.high > 0 ? " (" + d.high + " high)" : "") + '</span></div>' +
+      '<div class="dash-hbar"><div class="dash-hbar-fill" style="width:' + pct + '%;background:' +
+        (overloaded ? "var(--red)" : d.high >= 2 ? "var(--amber)" : "var(--accent)") + '"></div></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="dash-card"><div class="dash-card-title">No date assigned (' + noDate.length + ')</div>';
+  if (noDate.length === 0) {
+    html += '<div class="dash-review-empty" style="color:var(--green)">Everything has a date!</div>';
+  } else {
+    html += '<div style="font-size:.7rem;color:var(--muted);margin-bottom:.3rem">These could pile up silently</div>';
+    noDate.slice(0, 8).forEach(t => {
+      html += '<div class="dash-inline-task" onclick="openEditModal(\'' + t.id + '\')">' +
+        (t.energy ? '<span class="energy-dot ' + t.energy + '"></span>' : "") +
+        '<span>' + esc(t.title) + '</span>' +
+        (t.tags||[]).slice(0,2).map(tg => '<span class="tag-pill">' + esc(tg) + '</span>').join("") +
+        '</div>';
+    });
+    if (noDate.length > 8) html += '<div style="font-size:.7rem;color:var(--dim);padding:.3rem .5rem">+ ' + (noDate.length - 8) + ' more</div>';
+  }
+  html += '</div>';
   return html;
 }
 
