@@ -1827,7 +1827,8 @@ function renderDay(mc) {
   html += '<div class="day-summary">';
   html += `<div class="day-summary-chip"><span class="num">${blocks.length}</span> block${blocks.length !== 1 ? 's' : ''}</div>`;
   html += `<div class="day-summary-chip"><span class="num">${blockedHrs > 0 ? blockedHrs + 'h' : ''}${blockedMins > 0 ? blockedMins + 'm' : blockedHrs === 0 ? '0m' : ''}</span> scheduled</div>`;
-  html += `<div class="day-summary-chip"><span class="num">${flexible.length + timedFlexible.length}</span> flexible</div>`;
+  html += `<div class="day-summary-chip"><span class="num">${flexible.length}</span> flexible</div>`;
+  if (timedFlexible.length > 0) html += `<div class="day-summary-chip"><span class="num">${timedFlexible.length}</span> timed</div>`;
   if (overdueTasks.length > 0) {
     html += `<div class="day-summary-chip" style="border-color:var(--amber);color:var(--amber)"><span class="num" style="color:var(--amber)">${overdueTasks.length}</span> need attention</div>`;
   }
@@ -3059,7 +3060,7 @@ function buildWeeklyPlanning() {
 
   // Week stats
   const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
-  const createdThisWeek = tasks.filter(t => t.created_at && new Date(t.created_at) >= sevenAgo).length;
+  const createdThisWeek = tasks.filter(t => t.created_at && new Date(t.created_at) >= sevenAgo && new Date(t.created_at) <= new Date()).length;
   const completedThisWeek = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= sevenAgo).length;
   const floatingCount = tasks.filter(t => !t.due_date && t.status === 'open').length;
 
