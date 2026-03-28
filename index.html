@@ -1679,7 +1679,7 @@ function getRecurringForDate(dateStr) {
 }
 
 function getBlockCountForDate(dateStr) {
-  const dayTasks = tasks.filter(t => t.due_date === dateStr && t.status !== 'done' && t.status !== 'backlog' && t.due_time && t.due_time.includes('-'));
+  const dayTasks = tasks.filter(t => t.due_date === dateStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id && t.due_time && t.due_time.includes('-'));
   const recurring = getRecurringForDate(dateStr);
   return dayTasks.length + recurring.length;
 }
@@ -1691,9 +1691,9 @@ function renderDay(mc) {
 
   const isViewingToday = viewingDate === today();
   const viewStr = viewingDate;
-  const dayTasks = tasks.filter(t => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog');
+  const dayTasks = tasks.filter(t => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id);
   // Only show overdue tasks when viewing today
-  const overdueTasks = isViewingToday ? tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog') : [];
+  const overdueTasks = isViewingToday ? tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id) : [];
 
   // Get recurring events for this day
   const recurringToday = getRecurringForDate(viewStr);
@@ -2001,7 +2001,7 @@ function updateDayNowLine() {
 
 // ─── Render: Focus (merges Today + Waiting + Floating + Decide) ───
 function renderFocus(mc) {
-  let active = tasks.filter(t => t.status !== 'done' && t.status !== 'backlog');
+  let active = tasks.filter(t => t.status !== 'done' && t.status !== 'backlog' && !t.parent_id);
 
   // Search filter
   if (focusSearch) {
@@ -2085,7 +2085,7 @@ function renderFocus(mc) {
 
 // ─── Render: Streams ───
 function renderStreams(mc) {
-  let active = tasks.filter(t => t.status !== 'backlog');
+  let active = tasks.filter(t => t.status !== 'backlog' && !t.parent_id);
   if (globalSearch) active = active.filter(t => matchesSearch(t, globalSearch));
   const streams = {};
   active.forEach(t => {
@@ -2150,7 +2150,7 @@ function toggleStream(el) {
 
 // ─── Render: All Tasks ───
 function renderAll(mc) {
-  let filtered = tasks.filter(t => t.status !== 'done');
+  let filtered = tasks.filter(t => t.status !== 'done' && !t.parent_id);
 
   // Build search + filter UI
   let html = buildSearchBar('allFilters.search', 'Search tasks...');
@@ -2226,7 +2226,7 @@ function toggleFilter(type, val) {
 
 // ─── Render: Waiting ───
 function renderWaiting(mc) {
-  const waiting = tasks.filter(t => t.status === 'waiting');
+  const waiting = tasks.filter(t => t.status === 'waiting' && !t.parent_id);
   waiting.sort((a, b) => {
     const aOver = a.waiting_followup && a.waiting_followup < today();
     const bOver = b.waiting_followup && b.waiting_followup < today();
@@ -2255,7 +2255,7 @@ function renderWaiting(mc) {
 
 // ─── Render: Floating ───
 function renderFloating(mc) {
-  let floating = tasks.filter(t => !t.due_date && t.status === 'open');
+  let floating = tasks.filter(t => !t.due_date && t.status === 'open' && !t.parent_id);
   if (globalSearch) floating = floating.filter(t => matchesSearch(t, globalSearch));
   floating.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   if (floating.length === 0) {
@@ -2274,7 +2274,7 @@ function renderFloating(mc) {
 
 // ─── Render: Low Energy ───
 function renderLow(mc) {
-  const low = tasks.filter(t => t.energy === 'low' && (t.status === 'open' || t.status === 'in_progress'));
+  const low = tasks.filter(t => t.energy === 'low' && (t.status === 'open' || t.status === 'in_progress') && !t.parent_id);
   low.sort((a, b) => {
     if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
     if (a.due_date) return -1; if (b.due_date) return 1;
@@ -2290,7 +2290,7 @@ function renderLow(mc) {
 
 // ─── Render: Backlog ───
 function renderBacklog(mc) {
-  const backlog = tasks.filter(t => t.status === 'backlog');
+  const backlog = tasks.filter(t => t.status === 'backlog' && !t.parent_id);
   if (backlog.length === 0) {
     mc.innerHTML = emptyState('Backlog empty', 'Move tasks here that are not active right now');
     return;
@@ -2321,7 +2321,7 @@ function renderBacklog(mc) {
 // ─── Render: Done ───
 function renderDone(mc) {
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  let done = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo);
+  let done = tasks.filter(t => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= thirtyDaysAgo && !t.parent_id);
   done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
   if (globalSearch) done = done.filter(t => matchesSearch(t, globalSearch));
   let html = buildSearchBar('globalSearch', 'Search completed tasks...');
