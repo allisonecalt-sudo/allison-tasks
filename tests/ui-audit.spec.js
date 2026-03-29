@@ -43,24 +43,32 @@ test.describe('UI Audit — what works, what doesnt', () => {
   test('click each tab and screenshot', async ({ page }) => {
     await login(page);
 
-    const tabs = await page.locator('[data-tab], [class*="tab-btn"], [class*="tabBtn"], nav button').all().catch(() => []);
-    console.log('Number of clickable tabs:', tabs.length);
+    // Only click visible main tab buttons (not hidden More menu items)
+    const tabs = await page.locator('#tabBar > button.tab-btn').all();
+    console.log('Number of main tabs:', tabs.length);
 
     for (let i = 0; i < tabs.length; i++) {
       try {
         const label = await tabs[i].innerText();
         await tabs[i].click();
         await page.waitForTimeout(800);
-        await page.screenshot({ path: `test-results/tab-${i+1}-${label.trim().slice(0,20).replace(/[^a-z0-9]/gi,'_')}.png`, fullPage: true });
         console.log(`TAB ${i+1} "${label.trim()}" — clicked OK`);
-
-        // Check for JS errors on this tab
-        const errors = [];
-        page.on('pageerror', e => errors.push(e.message));
-        if (errors.length) console.log(`  JS errors on this tab:`, errors);
-
       } catch(e) {
         console.log(`TAB ${i+1} — FAILED: ${e.message}`);
+      }
+    }
+
+    // Also click More menu tabs
+    const moreTabs = ['events', 'recurring', 'done', 'history', 'dashboards'];
+    for (const tabId of moreTabs) {
+      try {
+        await page.locator('.tab-more-btn').click();
+        await page.waitForTimeout(200);
+        await page.locator(`#tabMoreMenu button[data-tab="${tabId}"]`).click();
+        await page.waitForTimeout(800);
+        console.log(`MORE TAB "${tabId}" — clicked OK`);
+      } catch(e) {
+        console.log(`MORE TAB "${tabId}" — FAILED: ${e.message}`);
       }
     }
   });
@@ -68,27 +76,23 @@ test.describe('UI Audit — what works, what doesnt', () => {
   test('task list - what shows up', async ({ page }) => {
     await login(page);
 
-    // Find task items
-    const tasks = await page.locator('[class*="task"], [class*="card"], li[data-id]').all().catch(() => []);
-    console.log('TASK ITEMS VISIBLE:', tasks.length);
+    // Find task cards specifically
+    const tasks = await page.locator('.task-card').all();
+    console.log('TASK CARDS VISIBLE:', tasks.length);
 
     if (tasks.length > 0) {
       const firstTask = await tasks[0].innerText().catch(() => '');
       console.log('First task text:', firstTask.slice(0, 100));
 
-      // Try clicking first task
       try {
         await tasks[0].click();
         await page.waitForTimeout(500);
-        await page.screenshot({ path: 'test-results/03-task-clicked.png', fullPage: true });
         console.log('Clicking first task — OK');
       } catch(e) {
         console.log('Clicking first task — FAILED:', e.message);
       }
     } else {
-      console.log('NO TASKS VISIBLE — might be wrong selector or wrong view');
-      const pageContent = await page.locator('body').innerText().catch(() => '');
-      console.log('Page content preview:', pageContent.slice(0, 500));
+      console.log('NO TASK CARDS — may be on wrong tab');
     }
   });
 
