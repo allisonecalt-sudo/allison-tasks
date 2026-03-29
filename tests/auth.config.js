@@ -1,6 +1,6 @@
 // Single source of truth for test credentials
-// Reads from .env file (never committed) or GitHub Secrets in CI
-require('dotenv').config();
+// In CI: reads from GitHub Secrets (env vars). Locally: reads .env if dotenv is installed.
+try { require('dotenv').config(); } catch(e) { /* dotenv not installed in CI — that's fine */ }
 
 module.exports = {
   EMAIL: process.env.TASK_APP_EMAIL || 'allisonecalt@gmail.com',
