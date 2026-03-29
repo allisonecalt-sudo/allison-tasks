@@ -3,12 +3,13 @@ const { login } = require('./login');
 
 // Helper: switch to a tab, opening "More" menu if needed
 async function switchTab(page, tabId) {
-  const btn = page.locator(`button[data-tab="${tabId}"]`);
-  if (await btn.isVisible()) {
-    await btn.click();
+  // Main tabs: day, focus, all, streams, week. Others are in "More" dropdown.
+  const mainTabs = ['day', 'focus', 'all', 'streams', 'week'];
+  if (mainTabs.includes(tabId)) {
+    await page.locator(`#tabBar > button[data-tab="${tabId}"]`).click();
   } else {
-    // Tab is in the "More" dropdown
     await page.locator('.tab-more-btn').click();
+    await page.waitForTimeout(200);
     await page.locator(`#tabMoreMenu button[data-tab="${tabId}"]`).click();
   }
   await page.waitForTimeout(500);
