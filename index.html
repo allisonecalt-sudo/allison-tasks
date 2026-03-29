@@ -1453,8 +1453,9 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
     <div class="modal-field">
       <div class="modal-label">Subtasks</div>
       <div id="editSubtasks"></div>
-      <div style="display:flex;gap:.4rem;margin-top:.4rem">
+      <div style="display:flex;gap:.4rem;margin-top:.4rem;align-items:center">
         <input type="text" class="modal-input" id="newSubtaskInput" placeholder="Add a subtask..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask()}">
+        <input type="date" id="newSubtaskDate" style="font-size:.78rem;padding:.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
         <button class="modal-save" style="padding:.4rem .7rem;font-size:.78rem;white-space:nowrap" onclick="addSubtask()">+ Add</button>
       </div>
     </div>
@@ -3039,25 +3040,42 @@ function renderEditSubtasks(parentId) {
     container.innerHTML = '<div style="font-size:.78rem;color:var(--dim);padding:.2rem 0">No subtasks yet</div>';
     return;
   }
-  container.innerHTML = children.map(c => `
+  container.innerHTML = children.map(c => {
+    const duePart = c.due_date ? `<span style="font-size:.7rem;color:${c.due_date < today() && c.status !== 'done' ? '#c0392b' : 'var(--dim)'};white-space:nowrap">${formatDate(c.due_date)}</span>` : '';
+    return `
     <div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-bottom:1px solid var(--surface2)">
       <div class="task-child-check ${c.status === 'done' ? 'checked' : ''}"
            onclick="event.stopPropagation();toggleChildDone('${c.id}','${c.status}');setTimeout(()=>renderEditSubtasks('${parentId}'),300)"></div>
       <span style="flex:1;font-size:.82rem;${c.status === 'done' ? 'text-decoration:line-through;color:var(--dim)' : ''}">${esc(c.title)}</span>
+      ${duePart}
+      <input type="date" value="${c.due_date || ''}" style="font-size:.7rem;width:auto;padding:0 .2rem;border:1px solid var(--border);border-radius:4px;background:var(--surface)" onchange="updateSubtaskDate('${c.id}','${parentId}',this.value)">
       <button onclick="event.stopPropagation();deleteSubtask('${c.id}','${parentId}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:.75rem;padding:.2rem" title="Remove">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+async function updateSubtaskDate(id, parentId, dateVal) {
+  const { error } = await sb.from('tasks').update({ due_date: dateVal || null }).eq('id', id);
+  if (error) { showToast('Error updating date'); return; }
+  const t = tasks.find(x => x.id === id);
+  if (t) t.due_date = dateVal || null;
+  renderEditSubtasks(parentId);
+  renderCurrentTab();
 }
 
 async function addSubtask() {
   const input = document.getElementById('newSubtaskInput');
+  const dateInput = document.getElementById('newSubtaskDate');
   const title = input.value.trim();
   if (!title || !editingTaskId) return;
   input.value = '';
+  const dueDate = dateInput.value || null;
+  dateInput.value = '';
   const { data, error } = await sb.from('tasks').insert({
     title: title,
     parent_id: editingTaskId,
     status: 'open',
+    due_date: dueDate,
     created_by: 'claude'
   }).select();
   if (error) { showToast('Error adding subtask'); return; }
