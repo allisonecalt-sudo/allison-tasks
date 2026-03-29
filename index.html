@@ -1892,7 +1892,7 @@ async function switchTab(id) {
   renderCurrentTab();
 }
 
-function updateTabCounts() {
+async function updateTabCounts() {
   const focusCount = tasks.filter(t => {
     if (t.status === 'done' || t.status === 'backlog') return false;
     return isToday(t) || isOverdue(t) || isTomorrow(t) || t.status === 'waiting' || t.status === 'decide' || (!t.due_date && t.status === 'open');
@@ -1924,8 +1924,8 @@ function updateTabCounts() {
 }
 
 // ─── Render Router ───
-function renderCurrentTab() {
-  updateTabCounts();
+async function renderCurrentTab() {
+  await updateTabCounts();
   renderRibbon();
   const mc = document.getElementById('mainContent');
   switch (currentTab) {
