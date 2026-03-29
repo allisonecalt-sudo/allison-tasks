@@ -5,7 +5,7 @@
 Allison's personal task manager. Live at: https://allisonecalt-sudo.github.io/allison-tasks/
 Code: c:/tmp/allison-tasks/index.html (single file app)
 Supabase project: hpiyvnfhoqnnnotrmwaz (same as budget app)
-Login: allisonecalt@gmail.com / Coppoc12!!
+Login: allisonecalt@gmail.com / Coppoc1234
 
 ## The Core Problem — She's Overwhelmed
 Allison says the app feels overwhelming. She can't articulate exactly why but it's something about visual hierarchy — too much to look at, unclear what to focus on first. She knows things are improving but it still doesn't feel calm.
