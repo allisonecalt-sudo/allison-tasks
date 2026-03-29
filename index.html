@@ -2417,7 +2417,7 @@ function renderAll(mc) {
   html += `</div>`;
 
   // Sort toggle (click same = reverse direction)
-  const arrow = allFilters.sortDir === 'asc' ? '↑' : '↓';
+  const arrow = allFilters.sortDir === 'asc' ? '\u2191' : '\u2193';
   html += `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;flex-wrap:wrap">
     <span style="font-size:.72rem;color:var(--dim)">Sort:</span>
     <button class="filter-chip ${allFilters.sort === 'due' ? 'active' : ''}" onclick="toggleFilter('sort','due')">Due date ${allFilters.sort === 'due' ? arrow : ''}</button>
