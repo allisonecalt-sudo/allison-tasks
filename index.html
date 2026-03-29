@@ -234,7 +234,7 @@ input, select, textarea { font-family: inherit; }
 .energy-dot.low { background: var(--energy-low); }
 .energy-dot.medium { background: var(--energy-med); }
 .energy-dot.high { background: var(--energy-high); }
-.task-title { font-size: .88rem; font-weight: 600; line-height: 1.3; word-break: break-word; }
+.task-title { font-size: .95rem; font-weight: 600; line-height: 1.4; word-break: break-word; }
 .task-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; align-items: center; opacity: .7; }
 .task-due {
   font-size: .7rem; font-weight: 500; color: var(--muted);
@@ -291,10 +291,30 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Section Headers ── */
 .section-hdr {
-  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .07em; color: var(--muted); padding: .75rem .25rem .35rem;
 }
 .section-hdr.overdue { color: var(--amber); }
+
+/* ── Collapsible Focus Sections ── */
+.section-collapsed .task-card:nth-child(n+7) { display: none; }
+.show-more-btn {
+  display: block; width: 100%; padding: .5rem; margin: .25rem 0 .75rem;
+  background: var(--surface2); border: 1px dashed var(--border);
+  border-radius: var(--r); font-size: .78rem; color: var(--muted);
+  cursor: pointer; text-align: center; font-weight: 500;
+}
+.show-more-btn:hover { background: var(--surface3); color: var(--text); }
+
+/* ── Compact Task Cards ── */
+.task-card .task-notes-preview,
+.task-card .task-age,
+.task-card .task-created,
+.task-card .task-edited { display: none; }
+.task-card.expanded .task-notes-preview,
+.task-card.expanded .task-age,
+.task-card.expanded .task-created,
+.task-card.expanded .task-edited { display: block; }
 
 /* ── Stream Cards ── */
 .stream-card {
@@ -2062,9 +2082,6 @@ function renderDay(mc) {
   html += `<div class="day-summary-chip"><span class="num">${blockedHrs > 0 ? blockedHrs + 'h' : ''}${blockedMins > 0 ? blockedMins + 'm' : blockedHrs === 0 ? '0m' : ''}</span> scheduled</div>`;
   html += `<div class="day-summary-chip"><span class="num">${flexible.length}</span> flexible</div>`;
   if (timedFlexible.length > 0) html += `<div class="day-summary-chip"><span class="num">${timedFlexible.length}</span> timed</div>`;
-  if (overdueTasks.length > 0) {
-    html += `<div class="day-summary-chip" style="border-color:var(--amber);color:var(--amber)"><span class="num" style="color:var(--amber)">${overdueTasks.length}</span> need attention</div>`;
-  }
   html += '</div>';
 
   // Timeline
@@ -2137,18 +2154,6 @@ function renderDay(mc) {
     html += `<div class="day-empty">No time blocks for this day. Tap <strong>+</strong> to add one.</div>`;
   }
 
-  // Overdue tasks (only when viewing today)
-  if (overdueTasks.length > 0) {
-    html += `<div class="day-flexible">`;
-    html += `<div class="day-flexible-header">
-      <div class="day-flexible-label" style="color:var(--amber)">Need Attention</div>
-      <div class="day-flexible-count" style="color:var(--amber)">${overdueTasks.length}</div>
-    </div>`;
-    overdueTasks.sort((a,b) => (a.due_date||'').localeCompare(b.due_date||''));
-    html += overdueTasks.map(t => renderTaskCard(t)).join('');
-    html += '</div>';
-  }
-
   // Timed flexible tasks
   if (timedFlexible.length > 0) {
     timedFlexible.sort((a, b) => (a.due_time || '').localeCompare(b.due_time || ''));
@@ -2176,7 +2181,7 @@ function renderDay(mc) {
   }
 
   // No tasks at all for this day
-  if (dayTasks.length === 0 && overdueTasks.length === 0) {
+  if (dayTasks.length === 0) {
     html += emptyState('Day is open', isViewingToday ? 'No tasks scheduled for today' : 'No tasks scheduled for this day');
   }
 
@@ -2249,29 +2254,34 @@ function renderFocus(mc) {
 
   let html = buildSearchBar('focusSearch', 'Search focus items...');
 
-  // Need Attention (overdue)
-  if (overdue.length > 0) {
-    html += `<div class="section-hdr overdue">${overdue.length} need${overdue.length === 1 ? 's' : ''} attention</div>`;
-    html += overdue.map(t => renderTaskCard(t)).join('');
+  function focusSection(hdrHTML, items, renderFn) {
+    if (items.length === 0) return '';
+    const collapsed = items.length > 5;
+    const sectionId = 'fs_' + Math.random().toString(36).slice(2, 8);
+    let s = `<div id="${sectionId}"${collapsed ? ' class="section-collapsed"' : ''}>`;
+    s += hdrHTML;
+    s += items.map(renderFn || (t => renderTaskCard(t))).join('');
+    if (collapsed) {
+      s += `<button class="show-more-btn" onclick="document.getElementById('${sectionId}').classList.remove('section-collapsed');this.remove()">Show ${items.length - 5} more</button>`;
+    }
+    s += '</div>';
+    return s;
   }
+
+  // Need Attention (overdue)
+  html += focusSection(
+    `<div class="section-hdr overdue">${overdue.length} need${overdue.length === 1 ? 's' : ''} attention</div>`,
+    overdue
+  );
 
   // Today
-  if (tod.length > 0) {
-    html += `<div class="section-hdr">Today</div>`;
-    html += tod.map(t => renderTaskCard(t)).join('');
-  }
+  html += focusSection(`<div class="section-hdr">Today</div>`, tod);
 
   // Tomorrow
-  if (tom.length > 0) {
-    html += `<div class="section-hdr">Tomorrow</div>`;
-    html += tom.map(t => renderTaskCard(t)).join('');
-  }
+  html += focusSection(`<div class="section-hdr">Tomorrow</div>`, tom);
 
   // Decisions
-  if (decide.length > 0) {
-    html += `<div class="section-hdr" style="color:var(--blue)">Decisions to make</div>`;
-    html += decide.map(t => renderTaskCard(t)).join('');
-  }
+  html += focusSection(`<div class="section-hdr" style="color:var(--blue)">Decisions to make</div>`, decide);
 
   // Waiting On
   if (waiting.length > 0) {
@@ -2282,8 +2292,7 @@ function renderFocus(mc) {
       if (!aOver && bOver) return 1;
       return (a.waiting_followup || 'z').localeCompare(b.waiting_followup || 'z');
     });
-    html += `<div class="section-hdr">Waiting on others</div>`;
-    html += waiting.map(t => {
+    html += focusSection(`<div class="section-hdr">Waiting on others</div>`, waiting, t => {
       const daysSinceCreated = t.created_at ? daysAgo(t.created_at.slice(0, 10)) : 0;
       const followupOverdue = t.waiting_followup && t.waiting_followup < today();
       let extra = `<div class="task-waiting">&#x23F3; ${esc(t.waiting_on || 'someone')} &middot; ${daysSinceCreated}d`;
@@ -2293,19 +2302,18 @@ function renderFocus(mc) {
       }
       extra += `</div>`;
       return renderTaskCard(t, false, extra);
-    }).join('');
+    });
   }
 
   // Floating (no date)
   if (floating.length > 0) {
     floating.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
-    html += `<div class="section-hdr">Floating (no date)</div>`;
-    html += floating.map(t => {
+    html += focusSection(`<div class="section-hdr">Floating (no date)</div>`, floating, t => {
       const age = t.created_at ? daysAgo(t.created_at.slice(0, 10)) : 0;
       const stale = age > 14;
       const extra = `<div class="task-age ${stale ? 'stale' : ''}">Added ${age}d ago${stale ? ' — needs a date or backlog' : ''}</div>`;
       return renderTaskCard(t, false, extra);
-    }).join('');
+    });
   }
 
   if (!overdue.length && !tod.length && !tom.length && !decide.length && !waiting.length && !floating.length) {
@@ -2779,10 +2787,10 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
   const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
   const isAging = agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog';
 
-  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" ${isAging ? 'title="Added ' + agingDays + ' days ago"' : '' } onclick="openEditModal('${t.id}')">
+  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" ${isAging ? 'title="Added ' + agingDays + ' days ago"' : '' }>
     <div class="task-top">
       <div class="task-check ${checked}" onclick="event.stopPropagation();toggleDone('${t.id}','${t.status}')"></div>
-      <div class="task-body">
+      <div class="task-body" onclick="toggleCardExpand(event, '${t.id}')" ondblclick="event.stopPropagation();openEditModal('${t.id}')">
         <div class="task-title-row">
           ${t.energy ? `<span class="energy-dot ${t.energy}"></span>` : ''}
           <span class="task-title">${highlightSearch(t.title)}</span>
@@ -2798,6 +2806,13 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
     </div>
     ${childrenHTML}
   </div>`;
+}
+
+// ─── Toggle Card Expand ───
+function toggleCardExpand(event, id) {
+  event.stopPropagation();
+  const card = document.getElementById('card_' + id);
+  if (card) card.classList.toggle('expanded');
 }
 
 // ─── Toggle Done ───
