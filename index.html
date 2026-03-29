@@ -2433,17 +2433,29 @@ function renderAll(mc) {
   if (allFilters.status) filtered = filtered.filter(t => t.status === allFilters.status);
   if (allFilters.tags.length) filtered = filtered.filter(t => allFilters.tags.some(ft => (t.tags || []).includes(ft)));
 
+  // Time range filter
+  if (allFilters.timeRange) {
+    const now = new Date(today() + 'T00:00:00');
+    let rangeEnd;
+    if (allFilters.timeRange === 'day') { rangeEnd = new Date(now); rangeEnd.setDate(rangeEnd.getDate() + 1); }
+    else if (allFilters.timeRange === 'week') { rangeEnd = new Date(now); rangeEnd.setDate(rangeEnd.getDate() + 7); }
+    else if (allFilters.timeRange === 'month') { rangeEnd = new Date(now); rangeEnd.setMonth(rangeEnd.getMonth() + 1); }
+    const endStr = rangeEnd.toISOString().slice(0, 10);
+    filtered = filtered.filter(t => t.due_date && t.due_date >= today() && t.due_date <= endStr);
+  }
+
   // Sort
+  const dir = allFilters.sortDir === 'desc' ? -1 : 1;
   if (allFilters.sort === 'edited') {
-    filtered.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    filtered.sort((a, b) => dir * (a.updated_at || '').localeCompare(b.updated_at || ''));
   } else if (allFilters.sort === 'created') {
-    filtered.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    filtered.sort((a, b) => dir * (a.created_at || '').localeCompare(b.created_at || ''));
   } else {
     filtered.sort((a, b) => {
-      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if (a.due_date && b.due_date) return dir * a.due_date.localeCompare(b.due_date);
       if (a.due_date) return -1;
       if (b.due_date) return 1;
-      return (a.created_at || '').localeCompare(b.created_at || '');
+      return dir * (a.created_at || '').localeCompare(b.created_at || '');
     });
   }
 
@@ -2459,7 +2471,11 @@ function renderAll(mc) {
 function toggleFilter(type, val) {
   if (type === 'energy') allFilters.energy = allFilters.energy === val ? null : val;
   else if (type === 'status') allFilters.status = allFilters.status === val ? null : val;
-  else if (type === 'sort') allFilters.sort = val;
+  else if (type === 'sort') {
+    if (allFilters.sort === val) { allFilters.sortDir = allFilters.sortDir === 'asc' ? 'desc' : 'asc'; }
+    else { allFilters.sort = val; allFilters.sortDir = 'asc'; }
+  }
+  else if (type === 'timeRange') allFilters.timeRange = allFilters.timeRange === val ? null : val;
   else if (type === 'tag') {
     const idx = allFilters.tags.indexOf(val);
     if (idx >= 0) allFilters.tags.splice(idx, 1); else allFilters.tags.push(val);
