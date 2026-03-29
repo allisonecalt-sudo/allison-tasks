@@ -39,7 +39,7 @@ test.describe('Authenticated tests', () => {
 
   test('events tab loads without errors', async ({ page }) => {
     await switchTab(page, 'events');
-    await expect(page.locator('.add-form-section')).toBeVisible();
+    await expect(page.locator('#evTitle')).toBeVisible();
   });
 
   test('edit modal has subtask date field', async ({ page }) => {

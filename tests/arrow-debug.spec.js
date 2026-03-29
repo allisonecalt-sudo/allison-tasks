@@ -1,13 +1,8 @@
 const { test } = require('@playwright/test');
-const { EMAIL, PASSWORD } = require('./auth.config');
+const { login } = require('./login');
 
 test('debug arrow rendering', async ({ page }) => {
-  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2000);
-  await page.locator('#authEmail').fill(EMAIL);
-  await page.locator('#authPass').fill(PASSWORD);
-  await page.locator('#authBtn').click();
-  await page.waitForTimeout(3000);
+  await login(page);
 
   // Go to All tab
   await page.locator('text=All').first().click();

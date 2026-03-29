@@ -1,19 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { EMAIL, PASSWORD: PASS } = require('./auth.config');
-
-async function login(page) {
-  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2000);
-  const authVisible = await page.locator('#authScreen').isVisible().catch(() => false);
-  if (authVisible) {
-    await page.locator('#authEmail').fill(EMAIL);
-    await page.locator('#authPass').fill(PASS);
-    await page.locator('#authBtn').click();
-    await page.waitForTimeout(3000);
-  }
-  await page.waitForSelector('#mainContent', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(1000);
-}
+const { login } = require('./login');
 
 test.describe('UI Audit — what works, what doesnt', () => {
 

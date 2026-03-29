@@ -1,19 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { EMAIL, PASSWORD } = require('./auth.config');
-
-const APP_URL = 'https://allisonecalt-sudo.github.io/allison-tasks/';
-
-async function login(page) {
-  await page.goto(APP_URL, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2000);
-  const authVisible = await page.locator('#authEmail').isVisible().catch(() => false);
-  if (authVisible) {
-    await page.locator('#authEmail').fill(EMAIL);
-    await page.locator('#authPass').fill(PASSWORD);
-    await page.locator('#authBtn').click();
-  }
-  await page.waitForTimeout(3000);
-}
+const { login } = require('./login');
 
 async function goToAllTab(page) {
   await login(page);

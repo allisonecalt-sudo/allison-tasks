@@ -1,23 +1,8 @@
 const { test, expect } = require('@playwright/test');
-const { EMAIL, PASSWORD } = require('./auth.config');
+const { login } = require('./login');
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const MIN_TOUCH = 44;
-
-async function login(page) {
-  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2000);
-
-  const authVisible = await page.locator('#authEmail').isVisible().catch(() => false);
-  if (authVisible) {
-    await page.fill('#authEmail', EMAIL);
-    await page.fill('#authPass', PASSWORD);
-    await page.click('#authBtn');
-  }
-  // Wait for the app to be ready
-  await page.waitForSelector('.tab-bar', { timeout: 15000 });
-  await page.waitForTimeout(1500);
-}
 
 test.describe('Mobile Audit — iPhone 14 Pro (390×844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
