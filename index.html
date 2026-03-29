@@ -1724,7 +1724,7 @@ async function showApp() {
   document.getElementById('app').classList.add('visible');
   updateHeader();
   renderTabBar();
-  renderCountersBar();
+  await renderCountersBar();
   loadCached();
   await refreshData();
 }
@@ -1771,7 +1771,7 @@ async function refreshData() {
     showToast('Error loading tasks');
   }
   renderRibbon();
-  renderCountersBar();
+  await renderCountersBar();
   renderCurrentTab();
 }
 
@@ -1861,7 +1861,7 @@ function closeTabMore() {
 }
 document.addEventListener('click', closeTabMore);
 
-function switchTab(id) {
+async function switchTab(id) {
   currentTab = id;
   allFilters = { search: '', tags: [], energy: null, status: null, noDate: false };
   focusSearch = '';
@@ -1880,7 +1880,7 @@ function updateTabCounts() {
     return isToday(t) || isOverdue(t) || isTomorrow(t) || t.status === 'waiting' || t.status === 'decide' || (!t.due_date && t.status === 'open');
   }).length;
   const eventsData = getEventsData();
-  const recurringData = getRecurringData();
+  const recurringData = await getRecurringData();
   const overdueRecurring = recurringData.filter(r => getDaysUntilDue(r) <= 0).length;
   const counts = {
     day: tasks.filter(t => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog').length + getRecurringForDate(viewingDate).length,
@@ -4229,18 +4229,26 @@ document.getElementById('blockTitle').addEventListener('keydown', e => {
 
 // ─── Counters (localStorage) — conveyor belt items like אבחונים, דוחות ───
 let _countersCache = null;
-function getCountersData() {
+async function getCountersData() {
   if (_countersCache) return _countersCache;
-  try { _countersCache = JSON.parse(localStorage.getItem('allison_counters') || '[]'); }
-  catch(e) { _countersCache = []; }
+  const { data, error } = await sb.from('counters').select('*').order('created_at');
+  _countersCache = error ? [] : data;
   return _countersCache;
 }
-function saveCountersData(arr) { _countersCache = arr; localStorage.setItem('allison_counters', JSON.stringify(arr)); }
+async function saveCounter(counter) {
+  const { error } = await sb.from('counters').upsert(counter);
+  if (error) console.error('Save counter error:', error);
+  _countersCache = null;
+}
+async function deleteCounter(id) {
+  await sb.from('counters').delete().eq('id', id);
+  _countersCache = null;
+}
 
-function renderCountersBar() {
+async function renderCountersBar() {
   const bar = document.getElementById('countersBar');
   if (!bar) return;
-  const counters = getCountersData();
+  const counters = await getCountersData();
   if (!counters.length) {
     bar.innerHTML = '<button class="counter-add-btn" onclick="addCounter()">+ Add counter</button>';
     return;
@@ -4255,31 +4263,29 @@ function renderCountersBar() {
   bar.innerHTML = html;
 }
 
-function addCounter() {
+async function addCounter() {
   const label = prompt('Counter name (e.g. אבחונים לכתוב):');
   if (!label) return;
   const value = parseInt(prompt('Current count:', '0') || '0');
-  const counters = getCountersData();
-  counters.push({ id: Date.now().toString(), label, value: value || 0 });
-  saveCountersData(counters);
+  await saveCounter({ label, value: value || 0 });
   renderCountersBar();
 }
 
-function editCounter(id) {
-  const counters = getCountersData();
+async function editCounter(id) {
+  const counters = await getCountersData();
   const c = counters.find(x => x.id === id);
   if (!c) return;
   const choice = prompt(`${c.label}: ${c.value}\n\nEnter new number, or type "delete" to remove, or "rename" to rename:`);
   if (choice === null) return;
   if (choice.toLowerCase() === 'delete') {
-    saveCountersData(counters.filter(x => x.id !== id));
+    await deleteCounter(id);
     showToast('Counter removed');
   } else if (choice.toLowerCase() === 'rename') {
     const newName = prompt('New name:', c.label);
-    if (newName) { c.label = newName; saveCountersData(counters); }
+    if (newName) { c.label = newName; await saveCounter(c); }
   } else {
     const num = parseInt(choice);
-    if (!isNaN(num)) { c.value = num; saveCountersData(counters); showToast(`${c.label}: ${num}`); }
+    if (!isNaN(num)) { c.value = num; await saveCounter(c); showToast(`${c.label}: ${num}`); }
   }
   renderCountersBar();
 }
@@ -4472,14 +4478,22 @@ async function deleteRecurringEvent(id) {
   showToast('Recurring event deleted'); renderCurrentTab();
 }
 
-// ─── Recurring Tracker (localStorage) ───
-function getRecurringData() {
+// ─── Recurring Tracker (Supabase) ───
+async function getRecurringData() {
   if (_recurringCache) return _recurringCache;
-  try { _recurringCache = JSON.parse(localStorage.getItem('allison_recurring') || '[]'); }
-  catch(e) { _recurringCache = []; }
+  const { data, error } = await sb.from('recurring_tasks').select('*').order('created_at');
+  _recurringCache = error ? [] : data;
   return _recurringCache;
 }
-function saveRecurringData(arr) { _recurringCache = arr; localStorage.setItem('allison_recurring', JSON.stringify(arr)); }
+async function saveRecurringItem(item) {
+  const { error } = await sb.from('recurring_tasks').upsert(item);
+  if (error) console.error('Save recurring error:', error);
+  _recurringCache = null;
+}
+async function deleteRecurringItem(id) {
+  await sb.from('recurring_tasks').delete().eq('id', id);
+  _recurringCache = null;
+}
 
 function getRecurringOccurrences(r) {
   // Returns array of { date, overdue } objects to display
@@ -4526,8 +4540,8 @@ function getDaysUntilDue(r) {
   return Math.ceil((occs[0].date - todayDate) / 86400000);
 }
 
-function renderRecurring(mc) {
-  let items = getRecurringData();
+async function renderRecurring(mc) {
+  let items = await getRecurringData();
   if (globalSearch) {
     const words = globalSearch.toLowerCase().split(/s+/).filter(Boolean);
     items = items.filter(r => words.every(w => (r.title || '').toLowerCase().includes(w)));
@@ -4581,20 +4595,19 @@ function renderRecurring(mc) {
   wireSearchInput(mc, 'globalSearch');
 }
 
-function addRecurring() {
+async function addRecurring() {
   const title = document.getElementById('recTitle').value.trim();
   const freq = parseInt(document.getElementById('recFreq').value);
   if (!title || !freq || freq < 1) { showToast('Title and frequency required'); return; }
   const type = document.getElementById('recType').value;
   const anchor = document.getElementById('recAnchor').value || null;
   if (type === 'fixed' && !anchor) { showToast('Fixed schedule needs a start date'); return; }
-  const items = getRecurringData();
-  items.push({ id: Date.now().toString(), title, frequency_days: freq, type, anchor_date: anchor, last_done: null, done_dates: [], created_at: new Date().toISOString() });
-  saveRecurringData(items); showToast('Added'); renderCurrentTab();
+  await saveRecurringItem({ title, frequency_days: freq, type, anchor_date: anchor, last_done: null, done_dates: [] });
+  showToast('Added'); renderCurrentTab();
 }
 
-function markRecurringDone(id, occDateStr) {
-  const items = getRecurringData();
+async function markRecurringDone(id, occDateStr) {
+  const items = await getRecurringData();
   const r = items.find(x => x.id === id);
   if (r) {
     r.last_done = today();
@@ -4602,12 +4615,12 @@ function markRecurringDone(id, occDateStr) {
       if (!r.done_dates) r.done_dates = [];
       if (occDateStr && !r.done_dates.includes(occDateStr)) r.done_dates.push(occDateStr);
     }
-    saveRecurringData(items); showToast('Marked done!'); renderCurrentTab();
+    await saveRecurringItem(r); showToast('Marked done!'); renderCurrentTab();
   }
 }
 
-function deleteRecurring(id) {
-  saveRecurringData(getRecurringData().filter(x => x.id !== id));
+async function deleteRecurring(id) {
+  await deleteRecurringItem(id);
   showToast('Removed'); renderCurrentTab();
 }
 
