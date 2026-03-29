@@ -1524,7 +1524,7 @@ const DASHBOARD_VIEWS = [
 ];
 let currentDashboard = 'triage';
 
-let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due', noDate: false };
+let allFilters = { search: '', tags: [], energy: null, status: null, sort: 'due', sortDir: 'asc', noDate: false, timeRange: null };
 let focusSearch = '';
 let globalSearch = '';
 
@@ -2408,12 +2408,20 @@ function renderAll(mc) {
   });
   html += `</div>`;
 
-  // Sort toggle
-  html += `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center">
+  // Sort toggle (click same = reverse direction)
+  const arrow = allFilters.sortDir === 'asc' ? '↑' : '↓';
+  html += `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;flex-wrap:wrap">
     <span style="font-size:.72rem;color:var(--dim)">Sort:</span>
-    <button class="filter-chip ${allFilters.sort === 'due' ? 'active' : ''}" onclick="toggleFilter('sort','due')">Due date</button>
-    <button class="filter-chip ${allFilters.sort === 'created' ? 'active' : ''}" onclick="toggleFilter('sort','created')">Date added</button>
-    <button class="filter-chip ${allFilters.sort === 'edited' ? 'active' : ''}" onclick="toggleFilter('sort','edited')">Last edited</button>
+    <button class="filter-chip ${allFilters.sort === 'due' ? 'active' : ''}" onclick="toggleFilter('sort','due')">Due date ${allFilters.sort === 'due' ? arrow : ''}</button>
+    <button class="filter-chip ${allFilters.sort === 'created' ? 'active' : ''}" onclick="toggleFilter('sort','created')">Date added ${allFilters.sort === 'created' ? arrow : ''}</button>
+    <button class="filter-chip ${allFilters.sort === 'edited' ? 'active' : ''}" onclick="toggleFilter('sort','edited')">Last edited ${allFilters.sort === 'edited' ? arrow : ''}</button>
+  </div>`;
+  // Time range filter
+  html += `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center">
+    <span style="font-size:.72rem;color:var(--dim)">Show:</span>
+    <button class="filter-chip ${allFilters.timeRange === 'day' ? 'active' : ''}" onclick="toggleFilter('timeRange','day')">Today</button>
+    <button class="filter-chip ${allFilters.timeRange === 'week' ? 'active' : ''}" onclick="toggleFilter('timeRange','week')">This week</button>
+    <button class="filter-chip ${allFilters.timeRange === 'month' ? 'active' : ''}" onclick="toggleFilter('timeRange','month')">This month</button>
   </div>`;
 
   // Apply filters
@@ -4174,10 +4182,49 @@ function getRecurringData() {
 }
 function saveRecurringData(arr) { _recurringCache = arr; localStorage.setItem('allison_recurring', JSON.stringify(arr)); }
 
+function getRecurringOccurrences(r) {
+  // Returns array of { date, overdue } objects to display
+  const todayDate = new Date(today()+'T00:00:00');
+  const type = r.type || 'rolling'; // default for legacy items
+  if (type === 'fixed') {
+    // Fixed: calculate occurrences from anchor_date forward by frequency_days
+    const anchor = new Date((r.anchor_date || r.created_at.slice(0,10))+'T00:00:00');
+    const freq = r.frequency_days;
+    // Find the next occurrence on or after today
+    let next = new Date(anchor);
+    while (next < todayDate) next.setDate(next.getDate() + freq);
+    // Also find the previous one (might be overdue)
+    let prev = new Date(next); prev.setDate(prev.getDate() - freq);
+    const results = [];
+    // If prev is overdue (past today and not done for that date)
+    if (prev >= anchor && prev < todayDate && !isDoneForDate(r, prev)) {
+      results.push({ date: new Date(prev), overdue: true });
+    }
+    // Always show next upcoming (unless already done for that date)
+    if (!isDoneForDate(r, next)) {
+      results.push({ date: new Date(next), overdue: false });
+    }
+    return results;
+  } else {
+    // Rolling: next = last_done + frequency_days. Only show current one.
+    const lastDone = r.last_done ? new Date(r.last_done+'T00:00:00') : new Date(r.created_at.slice(0,10)+'T00:00:00');
+    const nextDue = new Date(lastDone); nextDue.setDate(nextDue.getDate() + r.frequency_days);
+    return [{ date: nextDue, overdue: nextDue < todayDate }];
+  }
+}
+
+function isDoneForDate(r, date) {
+  // Check if this specific occurrence was completed
+  if (!r.done_dates) return false;
+  const dateStr = date.toISOString().slice(0,10);
+  return r.done_dates.includes(dateStr);
+}
+
 function getDaysUntilDue(r) {
-  const lastDone = r.last_done ? new Date(r.last_done+'T00:00:00') : new Date(r.created_at.slice(0,10)+'T00:00:00');
-  const nextDue = new Date(lastDone); nextDue.setDate(nextDue.getDate() + r.frequency_days);
-  return Math.ceil((nextDue - new Date(today()+'T00:00:00')) / 86400000);
+  const occs = getRecurringOccurrences(r);
+  if (!occs.length) return 999;
+  const todayDate = new Date(today()+'T00:00:00');
+  return Math.ceil((occs[0].date - todayDate) / 86400000);
 }
 
 function renderRecurring(mc) {
@@ -4191,21 +4238,29 @@ function renderRecurring(mc) {
   if (!sorted.length) { html = emptyState('No recurring items', 'Add habits and routines to track below'); }
   else {
     sorted.forEach(r => {
-      const daysUntil = getDaysUntilDue(r);
-      let dotColor = '#2d6a4f'; let dueText = `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
-      if (daysUntil <= 0) { dotColor = '#c0392b'; dueText = 'OVERDUE'; }
-      else if (daysUntil <= 7) dotColor = '#b5621a';
+      const occs = getRecurringOccurrences(r);
+      const typeLabel = (r.type || 'rolling') === 'fixed' ? 'Fixed' : 'Rolling';
+      const freqLabel = r.frequency_days >= 7 && r.frequency_days % 7 === 0
+        ? `Every ${r.frequency_days/7} week${r.frequency_days/7 !== 1 ? 's' : ''}`
+        : `Every ${r.frequency_days} day${r.frequency_days !== 1 ? 's' : ''}`;
       const lastDoneText = r.last_done ? `Last done: ${formatDate(r.last_done)}` : 'Never done';
-      html += `<div class="recurring-item">
-        <div class="recurring-status-dot" style="background:${dotColor}"></div>
-        <div class="recurring-body">
-          <div class="recurring-title">${esc(r.title)}</div>
-          <div class="recurring-meta">Every ${r.frequency_days} day${r.frequency_days !== 1 ? 's' : ''} · ${lastDoneText}</div>
-          <div class="recurring-due" style="color:${dotColor}">${dueText}</div>
-        </div>
-        <button class="recurring-done-btn" onclick="markRecurringDone('${r.id}')">Done</button>
-        <button class="recurring-delete-btn" onclick="deleteRecurring('${r.id}')" title="Remove">✕</button>
-      </div>`;
+      occs.forEach(occ => {
+        const daysUntil = Math.ceil((occ.date - new Date(today()+'T00:00:00')) / 86400000);
+        let dotColor = '#2d6a4f'; let dueText = `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
+        if (daysUntil <= 0) { dotColor = '#c0392b'; dueText = daysUntil === 0 ? 'TODAY' : 'OVERDUE'; }
+        else if (daysUntil <= 7) dotColor = '#b5621a';
+        const occDateStr = occ.date.toISOString().slice(0,10);
+        html += `<div class="recurring-item">
+          <div class="recurring-status-dot" style="background:${dotColor}"></div>
+          <div class="recurring-body">
+            <div class="recurring-title">${esc(r.title)}</div>
+            <div class="recurring-meta">${typeLabel} · ${freqLabel} · Due: ${formatDate(occDateStr)} · ${lastDoneText}</div>
+            <div class="recurring-due" style="color:${dotColor}">${dueText}</div>
+          </div>
+          <button class="recurring-done-btn" onclick="markRecurringDone('${r.id}','${occDateStr}')">Done</button>
+          <button class="recurring-delete-btn" onclick="deleteRecurring('${r.id}')" title="Remove">✕</button>
+        </div>`;
+      });
     });
   }
   html += `<div class="add-form-section">
@@ -4213,6 +4268,13 @@ function renderRecurring(mc) {
     <div class="add-form-row">
       <input type="text" id="recTitle" placeholder="e.g. Take vitamins" style="flex:3">
       <input type="number" id="recFreq" placeholder="Days" min="1" max="365" style="flex:1;max-width:80px">
+    </div>
+    <div class="add-form-row">
+      <select id="recType" style="flex:1">
+        <option value="rolling">Rolling (resets on completion)</option>
+        <option value="fixed">Fixed (set schedule)</option>
+      </select>
+      <input type="date" id="recAnchor" placeholder="Start date (fixed)" style="flex:1">
     </div>
     <button class="add-form-btn" onclick="addRecurring()">Add</button>
   </div>`;
@@ -4224,15 +4286,25 @@ function addRecurring() {
   const title = document.getElementById('recTitle').value.trim();
   const freq = parseInt(document.getElementById('recFreq').value);
   if (!title || !freq || freq < 1) { showToast('Title and frequency required'); return; }
+  const type = document.getElementById('recType').value;
+  const anchor = document.getElementById('recAnchor').value || null;
+  if (type === 'fixed' && !anchor) { showToast('Fixed schedule needs a start date'); return; }
   const items = getRecurringData();
-  items.push({ id: Date.now().toString(), title, frequency_days: freq, last_done: null, created_at: new Date().toISOString() });
+  items.push({ id: Date.now().toString(), title, frequency_days: freq, type, anchor_date: anchor, last_done: null, done_dates: [], created_at: new Date().toISOString() });
   saveRecurringData(items); showToast('Added'); renderCurrentTab();
 }
 
-function markRecurringDone(id) {
+function markRecurringDone(id, occDateStr) {
   const items = getRecurringData();
   const r = items.find(x => x.id === id);
-  if (r) { r.last_done = today(); saveRecurringData(items); showToast('Marked done!'); renderCurrentTab(); }
+  if (r) {
+    r.last_done = today();
+    if (r.type === 'fixed') {
+      if (!r.done_dates) r.done_dates = [];
+      if (occDateStr && !r.done_dates.includes(occDateStr)) r.done_dates.push(occDateStr);
+    }
+    saveRecurringData(items); showToast('Marked done!'); renderCurrentTab();
+  }
 }
 
 function deleteRecurring(id) {
