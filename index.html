@@ -1968,7 +1968,8 @@ function getRecurringForDate(dateStr) {
 function getBlockCountForDate(dateStr) {
   const dayTasks = tasks.filter(t => t.due_date === dateStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id && t.due_time && t.due_time.includes('-'));
   const recurring = getRecurringForDate(dateStr);
-  return dayTasks.length + recurring.length;
+  const recurringEvents = getEventsForDate(dateStr).filter(e => e.isRecurringEvent);
+  return dayTasks.length + recurring.length + recurringEvents.length;
 }
 
 // ─── Render: My Day ───
@@ -2036,9 +2037,14 @@ function renderDay(mc) {
     const timeParts = ev.time.split(':');
     const startH = parseInt(timeParts[0]);
     const startM = parseInt(timeParts[1] || 0);
+    let endH = startH + 1, endM = startM;
+    if (ev.end_time) {
+      const ep = ev.end_time.split(':');
+      endH = parseInt(ep[0]); endM = parseInt(ep[1] || 0);
+    }
     blocks.push({
-      task: { title: ev.title, due_time: ev.time, tags: [], id: null },
-      startHour: startH, startMin: startM, endHour: startH + 1, endMin: startM,
+      task: { title: ev.title, due_time: ev.time + (ev.end_time ? '-' + ev.end_time : ''), tags: [], id: null },
+      startHour: startH, startMin: startM, endHour: endH, endMin: endM,
       isEvent: true, eventData: ev,
     });
   });
@@ -2143,8 +2149,9 @@ function renderDay(mc) {
       const timeStr = t.due_time;
 
       if (b.isEvent) {
-        html += `<div class="day-block event-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px" onclick="switchTab('events')">
-          <div class="day-block-time">&#x1F5D3; ${esc(timeStr)}</div>
+        const recurIcon = b.eventData.isRecurringEvent ? '&#x21bb; ' : '&#x1F5D3; ';
+        html += `<div class="day-block event-block" style="top:${startOffset}px;height:${blockHeight}px;left:56px;right:8px${b.eventData.isRecurringEvent ? ';border-style:dashed' : ''}" onclick="switchTab('events')">
+          <div class="day-block-time">${recurIcon}${esc(timeStr)}</div>
           <div class="day-block-title">${esc(t.title)}</div>
           ${b.eventData.with_person ? `<div style="font-size:.68rem;color:#7c3aed;opacity:.8">with ${esc(b.eventData.with_person)}</div>` : ''}
         </div>`;
@@ -4278,6 +4285,7 @@ function editCounter(id) {
 
 // ─── Events (localStorage, cached) ───
 let _eventsCache = null;
+let _recurringEventsCache = null;
 let _recurringCache = null;
 function getEventsData() {
   if (_eventsCache) return _eventsCache;
@@ -4287,8 +4295,25 @@ function getEventsData() {
 }
 function saveEventsData(arr) { _eventsCache = arr; localStorage.setItem('allison_events', JSON.stringify(arr)); }
 
+function getRecurringEventsData() {
+  if (_recurringEventsCache) return _recurringEventsCache;
+  try { _recurringEventsCache = JSON.parse(localStorage.getItem('allison_recurring_events') || '[]'); }
+  catch(e) { _recurringEventsCache = []; }
+  return _recurringEventsCache;
+}
+function saveRecurringEventsData(arr) { _recurringEventsCache = arr; localStorage.setItem('allison_recurring_events', JSON.stringify(arr)); }
+
 function getEventsForDate(dateStr) {
-  return getEventsData().filter(e => e.date === dateStr && e.time);
+  const oneOff = getEventsData().filter(e => e.date === dateStr && e.time);
+  // Add recurring events matching this day of week
+  const d = new Date(dateStr + 'T00:00:00');
+  const dow = d.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+  const recurring = getRecurringEventsData().filter(re => re.day_of_week === dow).map(re => ({
+    ...re,
+    date: dateStr,
+    isRecurringEvent: true,
+  }));
+  return [...oneOff, ...recurring];
 }
 
 function renderEvents(mc) {
@@ -4339,6 +4364,43 @@ function renderEvents(mc) {
     </div>
     <button class="add-form-btn" onclick="addEvent()">Add Event</button>
   </div>`;
+
+  // ─── Recurring Events Section ───
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const recurringEvents = getRecurringEventsData();
+  html += `<div class="section-hdr" style="margin-top:24px">📅 Recurring Events</div>`;
+  if (recurringEvents.length) {
+    recurringEvents.forEach(re => {
+      const endStr = re.end_time ? ' – ' + re.end_time : '';
+      html += `<div class="event-card" style="border-inline-start:3px solid #7c3aed">
+        <button class="event-delete" onclick="event.stopPropagation();deleteRecurringEvent('${re.id}')" title="Delete">✕</button>
+        <div class="event-title">${esc(re.title)}</div>
+        <div class="event-meta">
+          <span class="event-date">Every ${dayNames[re.day_of_week]} at ${esc(re.time)}${endStr}</span>
+          ${re.with_person ? `<span class="event-with">with ${esc(re.with_person)}</span>` : ''}
+        </div>
+      </div>`;
+    });
+  } else {
+    html += emptyState('No recurring events', 'Add weekly events that show on your calendar');
+  }
+  html += `<div class="add-form-section">
+    <div class="add-form-title">Add Recurring Event</div>
+    <div class="add-form-row">
+      <input type="text" id="reTitle" placeholder="Event title" style="flex:2">
+      <select id="reDay">
+        <option value="0">Sunday</option><option value="1">Monday</option><option value="2" selected>Tuesday</option>
+        <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+      </select>
+    </div>
+    <div class="add-form-row">
+      <input type="time" id="reTime" placeholder="Start time">
+      <input type="time" id="reEndTime" placeholder="End time (optional)">
+      <input type="text" id="reWith" placeholder="With (optional)">
+    </div>
+    <button class="add-form-btn" onclick="addRecurringEvent()">Add Recurring Event</button>
+  </div>`;
+
   mc.innerHTML = html;
   wireSearchInput(mc, 'globalSearch');
 }
@@ -4357,6 +4419,23 @@ function addEvent() {
 function deleteEvent(id) {
   saveEventsData(getEventsData().filter(e => e.id !== id));
   showToast('Event deleted'); renderCurrentTab();
+}
+
+function addRecurringEvent() {
+  const title = document.getElementById('reTitle').value.trim();
+  const dayOfWeek = parseInt(document.getElementById('reDay').value);
+  const time = document.getElementById('reTime').value;
+  if (!title || !time) { showToast('Title and time are required'); return; }
+  const endTime = document.getElementById('reEndTime').value || '';
+  const withPerson = document.getElementById('reWith').value.trim() || '';
+  const re = { id: Date.now().toString(), title, day_of_week: dayOfWeek, time, end_time: endTime, with_person: withPerson, created_at: new Date().toISOString() };
+  const data = getRecurringEventsData(); data.push(re); saveRecurringEventsData(data);
+  showToast('Recurring event added'); renderCurrentTab();
+}
+
+function deleteRecurringEvent(id) {
+  saveRecurringEventsData(getRecurringEventsData().filter(e => e.id !== id));
+  showToast('Recurring event deleted'); renderCurrentTab();
 }
 
 // ─── Recurring Tracker (localStorage) ───
