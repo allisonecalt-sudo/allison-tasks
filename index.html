@@ -110,6 +110,18 @@ input, select, textarea { font-family: inherit; }
 }
 @media (max-width: 600px) {
   .ribbon-grid { grid-template-columns: repeat(3, 1fr); }
+  .ribbon.collapsed .ribbon-grid { display: none; }
+  .ribbon-summary {
+    display: none;
+    font-size: .78rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-align: center;
+    padding: .2rem 0;
+    cursor: pointer;
+  }
+  .ribbon.collapsed .ribbon-summary { display: block; }
+  .ribbon-summary:hover { color: var(--text); }
 }
 .ribbon-stat {
   text-align: center; padding: .3rem .25rem;
@@ -156,6 +168,30 @@ input, select, textarea { font-family: inherit; }
 }
 .tab-btn.active .tab-count { background: var(--asoft); color: var(--accent); }
 
+/* ── Tab More Dropdown ── */
+.tab-more-wrap { position: relative; flex-shrink: 0; }
+.tab-more-btn {
+  padding: .55rem .7rem; border: none; background: none;
+  font-size: .85rem; font-weight: 600; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+}
+.tab-more-btn:hover { color: var(--text); background: var(--surface2); }
+.tab-more-btn.has-active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-more-menu {
+  display: none; position: absolute; right: 0; top: 100%;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: var(--shadowlg);
+  z-index: 200; min-width: 140px; padding: .3rem 0;
+}
+.tab-more-menu.open { display: block; }
+.tab-more-menu button {
+  display: block; width: 100%; text-align: left;
+  padding: .5rem .85rem; border: none; background: none;
+  font-size: .8rem; color: var(--text); cursor: pointer;
+}
+.tab-more-menu button:hover { background: var(--surface2); }
+.tab-more-menu button.active { color: var(--accent); font-weight: 600; }
+
 /* ── Main Content ── */
 .main-content {
   flex: 1; padding: .75rem; padding-bottom: 5rem;
@@ -164,9 +200,9 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Task Cards ── */
 .task-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r); padding: .75rem .85rem; margin-bottom: .5rem;
-  box-shadow: var(--shadow); cursor: pointer; transition: all .15s;
+  background: var(--surface); border: 1px solid transparent;
+  border-radius: var(--r); padding: .65rem .8rem; margin-bottom: .6rem;
+  box-shadow: 0 1px 3px rgba(26,25,21,.04); cursor: pointer; transition: all .15s;
   position: relative; overflow: hidden;
 }
 .task-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(26,25,21,.12); }
@@ -199,7 +235,7 @@ input, select, textarea { font-family: inherit; }
 .energy-dot.medium { background: var(--energy-med); }
 .energy-dot.high { background: var(--energy-high); }
 .task-title { font-size: .88rem; font-weight: 600; line-height: 1.3; word-break: break-word; }
-.task-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; align-items: center; }
+.task-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; align-items: center; opacity: .7; }
 .task-due {
   font-size: .7rem; font-weight: 500; color: var(--muted);
   background: var(--surface2); padding: .15rem .4rem; border-radius: 6px;
@@ -209,7 +245,7 @@ input, select, textarea { font-family: inherit; }
 .tag-pill {
   font-size: .62rem; font-weight: 600; padding: .12rem .4rem;
   border-radius: 6px; background: var(--surface2); color: var(--muted);
-  white-space: nowrap;
+  white-space: nowrap; opacity: .6;
 }
 .task-waiting {
   font-size: .72rem; color: var(--amber); margin-top: .3rem;
@@ -554,7 +590,7 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
 /* ── Day Navigation ── */
 .day-nav {
   display: flex; align-items: center; justify-content: center;
-  gap: .5rem; padding: .6rem .5rem .3rem; position: relative;
+  gap: .5rem; padding: .6rem .5rem .3rem; position: relative; margin-bottom: 1rem;
 }
 .day-nav-arrow {
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
@@ -1273,7 +1309,8 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
 
   <!-- Ribbon -->
   <div class="ribbon" id="ribbon">
-    <div class="ribbon-grid" id="ribbonGrid"></div>
+    <div class="ribbon-summary" id="ribbonSummary" onclick="var r=document.getElementById('ribbon');r.classList.remove('collapsed');r.dataset.userExpanded='1'"></div>
+    <div class="ribbon-grid" id="ribbonGrid" onclick="if(window.innerWidth<=600){var r=document.getElementById('ribbon');r.classList.add('collapsed');delete r.dataset.userExpanded;}"></div>
   </div>
 
   <!-- Tab Bar -->
@@ -1708,6 +1745,23 @@ function renderRibbon() {
       <div class="ribbon-val ${s.cls}">${s.val}</div>
     </div>`
   ).join('');
+
+  // Update ribbon summary for mobile collapsed state
+  const todayCount = tasks.filter(t => t.due_date === today() && t.status !== 'done' && t.status !== 'backlog').length;
+  const summaryEl = document.getElementById('ribbonSummary');
+  if (summaryEl) {
+    let parts = [];
+    if (todayCount > 0) parts.push(`${todayCount} today`);
+    if (overdueCount > 0) parts.push(`${overdueCount} overdue`);
+    if (waitCount > 0) parts.push(`${waitCount} waiting`);
+    summaryEl.textContent = parts.length ? parts.join(' · ') : `${openCount} open`;
+  }
+
+  // Collapse ribbon by default on mobile
+  const ribbon = document.getElementById('ribbon');
+  if (window.innerWidth <= 600 && !ribbon.dataset.userExpanded) {
+    ribbon.classList.add('collapsed');
+  }
 }
 
 function ribbonStatClick(i) {
@@ -1717,13 +1771,39 @@ function ribbonStatClick(i) {
 // ─── Tab Bar ───
 function renderTabBar() {
   const bar = document.getElementById('tabBar');
-  bar.innerHTML = TABS.map(t =>
+  const mainTabs = TABS.slice(0, 5);
+  const moreTabs = TABS.slice(5);
+  const moreActive = moreTabs.some(t => t.id === currentTab);
+
+  let html = mainTabs.map(t =>
     `<button class="tab-btn ${t.id === currentTab ? 'active' : ''}"
       onclick="switchTab('${t.id}')" data-tab="${t.id}">
       ${t.label}<span class="tab-count" id="tabCount_${t.id}"></span>
     </button>`
   ).join('');
+
+  html += `<div class="tab-more-wrap">
+    <button class="tab-more-btn ${moreActive ? 'has-active' : ''}" onclick="toggleTabMore(event)">···</button>
+    <div class="tab-more-menu" id="tabMoreMenu">
+      ${moreTabs.map(t =>
+        `<button class="${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}');closeTabMore();">
+          ${t.label}<span class="tab-count" id="tabCount_${t.id}"></span>
+        </button>`
+      ).join('')}
+    </div>
+  </div>`;
+
+  bar.innerHTML = html;
 }
+
+function toggleTabMore(e) {
+  e.stopPropagation();
+  document.getElementById('tabMoreMenu').classList.toggle('open');
+}
+function closeTabMore() {
+  document.getElementById('tabMoreMenu')?.classList.remove('open');
+}
+document.addEventListener('click', closeTabMore);
 
 function switchTab(id) {
   currentTab = id;
@@ -1759,7 +1839,13 @@ function updateTabCounts() {
   };
   TABS.forEach(t => {
     const el = document.getElementById(`tabCount_${t.id}`);
-    if (el) el.textContent = counts[t.id] !== '' && counts[t.id] > 0 ? counts[t.id] : '';
+    if (!el) return;
+    if (t.id === 'all') {
+      const allFilterActive = allFilters.search || allFilters.tags.length || allFilters.energy || allFilters.status || allFilters.noDate;
+      el.textContent = allFilterActive ? counts[t.id] : '';
+    } else {
+      el.textContent = counts[t.id] !== '' && counts[t.id] > 0 ? counts[t.id] : '';
+    }
   });
 }
 
