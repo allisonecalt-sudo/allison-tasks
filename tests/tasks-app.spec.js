@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 // Basic smoke tests for the tasks app
 
 test('page loads and shows login screen', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/');
   await expect(page).toHaveTitle('Tasks — Allison');
   await expect(page.locator('#authScreen')).toBeVisible();
   await expect(page.locator('#authEmail')).toBeVisible();
@@ -12,13 +12,13 @@ test('page loads and shows login screen', async ({ page }) => {
 });
 
 test('login button exists and says Sign In', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/');
   const btn = page.locator('#authBtn');
   await expect(btn).toHaveText('Sign In');
 });
 
 test('empty login shows error', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('https://allisonecalt-sudo.github.io/allison-tasks/');
   await page.locator('#authBtn').click();
   // Should show some error when trying to login with empty fields
   await expect(page.locator('.auth-error')).toBeVisible();
