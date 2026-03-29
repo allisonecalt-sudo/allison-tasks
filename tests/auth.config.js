@@ -1,6 +1,8 @@
 // Single source of truth for test credentials
-// If login breaks in tests, check HERE first
+// Reads from .env file (never committed) or GitHub Secrets in CI
+require('dotenv').config();
+
 module.exports = {
-  EMAIL: 'allisonecalt@gmail.com',
-  PASSWORD: 'Coppoc12!!',
+  EMAIL: process.env.TASK_APP_EMAIL || 'allisonecalt@gmail.com',
+  PASSWORD: process.env.TASK_APP_PASSWORD || '',
 };
