@@ -8,15 +8,14 @@ async function login(page) {
   await page.locator('#authPass').fill(PASSWORD);
   await page.locator('#authBtn').click();
 
-  // Wait for either success or error
-  const result = await Promise.race([
-    page.locator('#app.visible').waitFor({ timeout: 20000 }).then(() => 'success'),
-    page.locator('.auth-error').waitFor({ timeout: 20000 }).then(() => 'error'),
-  ]);
-
-  if (result === 'error') {
-    const errorText = await page.locator('.auth-error').textContent();
-    throw new Error(`Login failed: ${errorText}`);
+  // Wait for app to load (login successful)
+  try {
+    await page.locator('#app.visible').waitFor({ timeout: 20000 });
+  } catch (e) {
+    // If timed out, check if there's a login error
+    const errorText = await page.locator('#authError').textContent();
+    if (errorText) throw new Error(`Login failed: ${errorText}`);
+    throw new Error('Login timed out — app never became visible');
   }
 }
 
