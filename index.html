@@ -1342,6 +1342,7 @@ mark.search-hl { background: #fef08a; color: inherit; border-radius: 2px; paddin
       <div class="hdr-date" id="hdrDate"></div>
     </div>
     <div class="hdr-actions">
+      <button class="hdr-btn" id="lowCapBtn" onclick="toggleLowCapacity()" title="Low capacity mode" style="font-size:1rem">&#x1F50B;</button>
       <button class="hdr-btn" onclick="refreshData()" title="Refresh">&#x21bb;</button>
       <button class="hdr-btn" onclick="doLogout()" title="Sign out">&#x23fb;</button>
     </div>
@@ -1546,6 +1547,23 @@ let editingTaskId = null;
 let qaEnergy = null;
 let dayNowTimer = null;
 let viewingDate = today(); // The date currently shown in My Day
+let lowCapacity = false;
+let dayFilter = null; // category filter for My Day: null = all
+
+function hasHebrew(text) { return /[\u0590-\u05FF]/.test(text); }
+
+function toggleLowCapacity() {
+  lowCapacity = !lowCapacity;
+  const btn = document.getElementById('lowCapBtn');
+  if (btn) {
+    btn.innerHTML = lowCapacity ? '&#x1FAAB;' : '&#x1F50B;';
+    btn.style.background = lowCapacity ? '#f59e0b22' : '';
+    btn.style.borderColor = lowCapacity ? '#f59e0b' : '';
+    btn.title = lowCapacity ? 'Low capacity ON — showing only low energy tasks' : 'Low capacity mode';
+  }
+  showToast(lowCapacity ? 'Low capacity mode — low energy tasks only' : 'Showing all tasks');
+  renderCurrentTab();
+}
 
 // ─── Recurring Events ───
 const RECURRING = [
@@ -1827,8 +1845,8 @@ function ribbonStatClick(i) {
 // ─── Tab Bar ───
 function renderTabBar() {
   const bar = document.getElementById('tabBar');
-  const mainTabs = TABS.slice(0, 5);
-  const moreTabs = TABS.slice(5);
+  const mainTabs = TABS.slice(0, 3);
+  const moreTabs = TABS.slice(3);
   const moreActive = moreTabs.some(t => t.id === currentTab);
 
   let html = mainTabs.map(t =>
@@ -1974,18 +1992,47 @@ function getBlockCountForDate(dateStr) {
 }
 
 // ─── Render: My Day ───
-function renderDay(mc) {
+async function renderDay(mc) {
   // Stop any existing now-line timer
   if (dayNowTimer) { clearInterval(dayNowTimer); dayNowTimer = null; }
 
+  // Fetch Supabase recurring items
+  const recurringItems = await getRecurringData();
+
   const isViewingToday = viewingDate === today();
   const viewStr = viewingDate;
-  const dayTasks = tasks.filter(t => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id);
+  let dayTasks = tasks.filter(t => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id);
   // Only show overdue tasks when viewing today
   const overdueTasks = isViewingToday ? tasks.filter(t => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id) : [];
 
+  // Low-capacity filter: only show low energy tasks
+  if (lowCapacity) {
+    dayTasks = dayTasks.filter(t => t.energy === 'low');
+  }
+
+  // Category filter
+  if (dayFilter) {
+    dayTasks = dayTasks.filter(t => (t.tags || []).includes(dayFilter));
+  }
+
   // Get recurring events for this day
   const recurringToday = getRecurringForDate(viewStr);
+
+  // Get Supabase recurring items due today or overdue
+  const recurringDueToday = [];
+  recurringItems.forEach(r => {
+    const occs = getRecurringOccurrences(r);
+    occs.forEach(occ => {
+      const occDateStr = occ.date.toISOString().slice(0, 10);
+      if (occDateStr === viewStr || (isViewingToday && occ.overdue)) {
+        recurringDueToday.push({ item: r, occ, occDateStr });
+      }
+    });
+  });
+
+  // Split habits (daily) vs other recurring
+  const habits = recurringDueToday.filter(rd => rd.item.frequency_days === 1);
+  const otherRecurring = recurringDueToday.filter(rd => rd.item.frequency_days !== 1);
 
   // Split into time-blocked vs flexible
   const timeBlocked = [];
@@ -2110,6 +2157,42 @@ function renderDay(mc) {
   });
   html += '</div>';
 
+  // ─── Category Filter Pills ───
+  const filterTags = [
+    { tag: 'work-clalit', label: 'Clalit' },
+    { tag: 'work-petachya', label: 'Petachya' },
+    { tag: 'personal', label: 'Personal' },
+    { tag: 'finance', label: 'Finance' },
+  ];
+  html += '<div style="display:flex;gap:.4rem;padding:.3rem .8rem;flex-wrap:wrap">';
+  filterTags.forEach(f => {
+    const active = dayFilter === f.tag;
+    const icon = TAG_ICONS[f.tag] || '';
+    html += `<button onclick="dayFilter=${active ? 'null' : "'" + f.tag + "'"};renderCurrentTab()" style="
+      padding:.25rem .6rem;border-radius:999px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};
+      background:${active ? 'var(--accent)' : 'var(--card-bg)'};color:${active ? '#fff' : 'var(--muted)'};
+      font-size:.72rem;cursor:pointer;font-family:inherit">${icon} ${f.label}</button>`;
+  });
+  html += '</div>';
+
+  // ─── Daily Habits Strip ───
+  if (habits.length > 0) {
+    html += '<div style="display:flex;gap:.4rem;padding:.4rem .8rem;flex-wrap:wrap;align-items:center">';
+    html += '<span style="font-size:.7rem;color:var(--muted);font-weight:600">Habits</span>';
+    habits.forEach(h => {
+      const done = h.occ.overdue === false && isDoneForDate(h.item, h.occ.date);
+      const titleDir = hasHebrew(h.item.title) ? ' dir="rtl"' : '';
+      html += `<label style="display:flex;align-items:center;gap:.3rem;padding:.25rem .55rem;
+        border-radius:999px;background:${done ? '#22c55e22' : 'var(--card-bg)'};border:1px solid ${done ? '#22c55e' : 'var(--border)'};
+        font-size:.72rem;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" ${done ? 'checked disabled' : ''} onchange="markRecurringDone('${h.item.id}','${h.occDateStr}')"
+          style="width:14px;height:14px;accent-color:#22c55e">
+        <span${titleDir}>${esc(h.item.title)}</span>
+      </label>`;
+    });
+    html += '</div>';
+  }
+
   // Summary chips
   const taskBlocks = blocks.filter(b => !b.isRecurring);
   const recBlocks = blocks.filter(b => b.isRecurring);
@@ -2223,8 +2306,40 @@ function renderDay(mc) {
     html += '</div>';
   }
 
+  // ─── Recurring Tasks Due Today / Overdue ───
+  if (otherRecurring.length > 0) {
+    html += `<div class="day-flexible">`;
+    html += `<div class="day-flexible-header">
+      <div class="day-flexible-label">🔁 Recurring</div>
+      <div class="day-flexible-count">${otherRecurring.length}</div>
+    </div>`;
+    otherRecurring.forEach(rd => {
+      const r = rd.item;
+      const titleDir = hasHebrew(r.title) ? ' dir="rtl"' : '';
+      const overdueTag = rd.occ.overdue ? '<span style="color:#ef4444;font-size:.7rem;font-weight:600;margin-inline-start:.4rem">OVERDUE</span>' : '';
+      html += `<div class="task-card" style="border-inline-start:3px solid var(--accent)">
+        <div class="task-top">
+          <div class="task-body" style="flex:1">
+            <div class="task-title-row">
+              <span style="font-size:.8rem">🔁</span>
+              <span class="task-title"${titleDir}>${esc(r.title)}</span>
+              ${overdueTag}
+            </div>
+            <div class="task-meta">
+              <span class="tag-pill" style="background:var(--accent-bg);color:var(--accent)">Every ${r.frequency_days}d</span>
+            </div>
+          </div>
+          <button onclick="markRecurringDone('${r.id}','${rd.occDateStr}')" style="
+            background:#22c55e;color:#fff;border:none;border-radius:var(--r);padding:.3rem .7rem;
+            font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">Done</button>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
   // No tasks at all for this day
-  if (dayTasks.length === 0) {
+  if (dayTasks.length === 0 && otherRecurring.length === 0) {
     html += emptyState('Day is open', isViewingToday ? 'No tasks scheduled for today' : 'No tasks scheduled for this day');
   }
 
@@ -2836,7 +2951,7 @@ function renderTaskCard(t, compact = false, extraHTML = '', showActivate = false
       <div class="task-body" onclick="toggleCardExpand(event, '${t.id}')" ondblclick="event.stopPropagation();openEditModal('${t.id}')">
         <div class="task-title-row">
           ${t.energy ? `<span class="energy-dot ${t.energy}"></span>` : ''}
-          <span class="task-title">${highlightSearch(t.title)}</span>
+          <span class="task-title"${hasHebrew(t.title) ? ' dir="rtl"' : ''}>${highlightSearch(t.title)}</span>
           ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
         </div>
         <div class="task-meta">
