@@ -1757,7 +1757,8 @@ async function refreshData() {
   try {
     const [tasksRes, tagsRes] = await Promise.all([
       sb.from('tasks').select('*').order('sort_order', { ascending: true, nullsFirst: false }),
-      sb.from('tag_definitions').select('*')
+      sb.from('tag_definitions').select('*'),
+      loadRecurringEventsFromSupabase()
     ]);
     if (tasksRes.error) throw tasksRes.error;
     if (tagsRes.error) throw tagsRes.error;
@@ -4297,11 +4298,35 @@ function saveEventsData(arr) { _eventsCache = arr; localStorage.setItem('allison
 
 function getRecurringEventsData() {
   if (_recurringEventsCache) return _recurringEventsCache;
+  // Fallback to localStorage until Supabase loads
   try { _recurringEventsCache = JSON.parse(localStorage.getItem('allison_recurring_events') || '[]'); }
   catch(e) { _recurringEventsCache = []; }
   return _recurringEventsCache;
 }
 function saveRecurringEventsData(arr) { _recurringEventsCache = arr; localStorage.setItem('allison_recurring_events', JSON.stringify(arr)); }
+
+async function loadRecurringEventsFromSupabase() {
+  try {
+    const { data, error } = await sb.from('recurring_events').select('*').order('day_of_week');
+    if (error) { console.error('Failed to load recurring events:', error); return; }
+    _recurringEventsCache = data;
+    localStorage.setItem('allison_recurring_events', JSON.stringify(data));
+  } catch(e) { console.error('Recurring events fetch error:', e); }
+}
+
+async function addRecurringEventToSupabase(re) {
+  try {
+    const { data, error } = await sb.from('recurring_events').insert(re).select();
+    if (error) { console.error('Failed to add recurring event:', error); return null; }
+    return data[0];
+  } catch(e) { console.error('Recurring event insert error:', e); return null; }
+}
+
+async function deleteRecurringEventFromSupabase(id) {
+  try {
+    await sb.from('recurring_events').delete().eq('id', id);
+  } catch(e) { console.error('Recurring event delete error:', e); }
+}
 
 function getEventsForDate(dateStr) {
   const oneOff = getEventsData().filter(e => e.date === dateStr && e.time);
@@ -4379,6 +4404,7 @@ function renderEvents(mc) {
           <span class="event-date">Every ${dayNames[re.day_of_week]} at ${esc(re.time)}${endStr}</span>
           ${re.with_person ? `<span class="event-with">with ${esc(re.with_person)}</span>` : ''}
         </div>
+        ${re.notes ? `<div style="font-size:.75rem;color:var(--muted);margin-top:4px">${esc(re.notes)}</div>` : ''}
       </div>`;
     });
   } else {
@@ -4421,20 +4447,28 @@ function deleteEvent(id) {
   showToast('Event deleted'); renderCurrentTab();
 }
 
-function addRecurringEvent() {
+async function addRecurringEvent() {
   const title = document.getElementById('reTitle').value.trim();
   const dayOfWeek = parseInt(document.getElementById('reDay').value);
   const time = document.getElementById('reTime').value;
   if (!title || !time) { showToast('Title and time are required'); return; }
   const endTime = document.getElementById('reEndTime').value || '';
   const withPerson = document.getElementById('reWith').value.trim() || '';
-  const re = { id: Date.now().toString(), title, day_of_week: dayOfWeek, time, end_time: endTime, with_person: withPerson, created_at: new Date().toISOString() };
-  const data = getRecurringEventsData(); data.push(re); saveRecurringEventsData(data);
-  showToast('Recurring event added'); renderCurrentTab();
+  const re = { title, day_of_week: dayOfWeek, time, end_time: endTime || null, with_person: withPerson || null };
+  const saved = await addRecurringEventToSupabase(re);
+  if (saved) {
+    _recurringEventsCache = null; // clear cache
+    await loadRecurringEventsFromSupabase();
+    showToast('Recurring event added'); renderCurrentTab();
+  } else {
+    showToast('Failed to add recurring event');
+  }
 }
 
-function deleteRecurringEvent(id) {
-  saveRecurringEventsData(getRecurringEventsData().filter(e => e.id !== id));
+async function deleteRecurringEvent(id) {
+  await deleteRecurringEventFromSupabase(id);
+  _recurringEventsCache = null;
+  await loadRecurringEventsFromSupabase();
   showToast('Recurring event deleted'); renderCurrentTab();
 }
 
