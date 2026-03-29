@@ -151,11 +151,14 @@ test.describe('UI Audit — what works, what doesnt', () => {
     await login(page);
     await page.waitForTimeout(2000);
 
-    // Click around a bit
-    const tabs = await page.locator('[data-tab], nav button').all().catch(() => []);
-    for (const tab of tabs.slice(0, 4)) {
-      await tab.click().catch(() => {});
-      await page.waitForTimeout(500);
+    // Click around main tabs only (avoid More menu items that may close page)
+    const mainTabs = ['day', 'focus', 'all', 'week'];
+    for (const tabId of mainTabs) {
+      const btn = page.locator(`#tabBar > button[data-tab="${tabId}"]`);
+      if (await btn.count() > 0) {
+        await btn.click().catch(() => {});
+        await page.waitForTimeout(500).catch(() => {});
+      }
     }
 
     console.log('\n=== CONSOLE ERRORS ===');

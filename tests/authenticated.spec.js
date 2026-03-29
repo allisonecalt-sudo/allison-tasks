@@ -8,9 +8,10 @@ async function switchTab(page, tabId) {
   if (mainTabs.includes(tabId)) {
     await page.locator(`#tabBar > button[data-tab="${tabId}"]`).click();
   } else {
-    await page.locator('.tab-more-btn').click();
-    await page.waitForTimeout(200);
-    await page.locator(`#tabMoreMenu button[data-tab="${tabId}"]`).click();
+    // Open more menu and force it to stay open, then click the tab
+    await page.locator('.tab-more-btn').click({ force: true });
+    await page.locator('#tabMoreMenu').evaluate(el => el.classList.add('open'));
+    await page.locator(`#tabMoreMenu button[data-tab="${tabId}"]`).click({ force: true });
   }
   await page.waitForTimeout(500);
 }
