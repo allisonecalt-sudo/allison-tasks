@@ -15,6 +15,7 @@ import { sb, getTagIcon } from './config';
 import * as State from './state';
 import { TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew } from './state';
 import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
+import { esc, emptyState, showToast, toastUndo } from './ui';
 
 // ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
 let tasks = State.tasks;
@@ -2177,50 +2178,7 @@ function confirmDeleteTask() {
 }
 
 // ─── Helpers ───
-function esc(s) {
-  if (!s) return '';
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-function emptyState(title, subtitle) {
-  return `<div class="empty-state">
-    <div class="empty-state-icon">&#x2728;</div>
-    <div class="empty-state-text"><strong>${title}</strong><br>${subtitle}</div>
-  </div>`;
-}
-
-let toastTimer;
-function showToast(msg, undoFn = null) {
-  const t = document.getElementById('toast');
-  clearTimeout(toastTimer);
-  if (undoFn) {
-    t.innerHTML = `<span>${msg}</span><button class="toast-undo-btn" onclick="toastUndo()">Undo</button>`;
-    t._undoFn = undoFn;
-    t.classList.add('has-undo');
-  } else {
-    t.innerHTML = `<span>${msg}</span>`;
-    t._undoFn = null;
-    t.classList.remove('has-undo');
-  }
-  t.classList.add('visible');
-  toastTimer = setTimeout(
-    () => {
-      t.classList.remove('visible', 'has-undo');
-    },
-    undoFn ? 4000 : 2200,
-  );
-}
-function toastUndo() {
-  const t = document.getElementById('toast');
-  if (t._undoFn) {
-    t._undoFn();
-    t._undoFn = null;
-  }
-  clearTimeout(toastTimer);
-  t.classList.remove('visible', 'has-undo');
-}
+// esc, emptyState, showToast, toastUndo → imported from ./ui
 
 // ─── Add Block Modal ───
 function openBlockModal() {
