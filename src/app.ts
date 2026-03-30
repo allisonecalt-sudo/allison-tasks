@@ -71,6 +71,11 @@ import {
   renderRecurring, addRecurring, markRecurringDone, deleteRecurring,
   renderWeekTab, setTabEventsCallbacks,
 } from './tab-events';
+import { toggleDone, toggleChildDone, activateTask, setTaskActionsCallbacks } from './task-actions';
+import {
+  pickQAEnergy, setQADate, handleQADatePicker, quickAddTask,
+  setQuickAddCallbacks, initQuickAddListeners,
+} from './quick-add';
 
 // State variables imported directly from ./state
 
@@ -426,207 +431,7 @@ async function renderCurrentTab() {
   }
 }
 
-// ─── Day Navigation Helpers ───
-// ─── Toggle Done ───
-async function toggleDone(id, currentStatus) {
-  const newStatus = currentStatus === 'done' ? 'open' : 'done';
-  const now = new Date().toISOString();
-
-  // Animate
-  const card = document.getElementById('card_' + id);
-  if (card && newStatus === 'done') {
-    card.classList.add('done-anim');
-  }
-
-  const update = { status: newStatus, updated_at: now };
-  if (newStatus === 'done') update.completed_at = now;
-  else update.completed_at = null;
-
-  const { error } = await sb.from('tasks').update(update).eq('id', id);
-  if (error) {
-    showToast('Error updating task');
-    return;
-  }
-
-  // Log history
-  await sb.from('task_history').insert({
-    task_id: id,
-    field_changed: 'status',
-    old_value: currentStatus,
-    new_value: newStatus,
-    changed_at: now,
-  });
-
-  // Update local
-  const task = tasks.find((t) => t.id === id);
-  if (task) {
-    Object.assign(task, update);
-    localStorage.setItem('tasks_cache', JSON.stringify(tasks));
-  }
-
-  if (newStatus === 'done') {
-    showToast('Done!', () => toggleDone(id, 'done'));
-    setTimeout(() => renderCurrentTab(), 350);
-  } else {
-    showToast('Reopened');
-    renderCurrentTab();
-  }
-}
-
-async function toggleChildDone(id, currentStatus) {
-  await toggleDone(id, currentStatus);
-}
-
-async function activateTask(event, id) {
-  event.stopPropagation();
-  const now = new Date().toISOString();
-  const { error } = await sb.from('tasks').update({ status: 'open', updated_at: now }).eq('id', id);
-  if (error) {
-    showToast('Error activating task');
-    return;
-  }
-  const task = tasks.find((t) => t.id === id);
-  if (task) {
-    task.status = 'open';
-    task.updated_at = now;
-    localStorage.setItem('tasks_cache', JSON.stringify(tasks));
-  }
-  showToast('Task activated');
-  renderCurrentTab();
-}
-
-// ─── Quick Add ───
-function pickQAEnergy(btn) {
-  const wasActive = btn.classList.contains('active');
-  document.querySelectorAll('.energy-pick').forEach((b) => b.classList.remove('active'));
-  if (wasActive) {
-    setQaEnergy(null);
-  } else {
-    btn.classList.add('active');
-    setQaEnergy(btn.dataset.e);
-  }
-}
-
-let qaDate = null;
-
-function setQADate(which) {
-  const todayStr = today();
-  const tomorrowStr = tomorrow();
-  const btnToday = document.getElementById('qaBtnToday');
-  const btnTomorrow = document.getElementById('qaBtnTomorrow');
-  const pickerEl = document.getElementById('qaDate');
-  if (which === 'today') {
-    if (qaDate === todayStr) {
-      qaDate = null;
-      btnToday.classList.remove('active');
-    } else {
-      qaDate = todayStr;
-      btnToday.classList.add('active');
-      btnTomorrow.classList.remove('active');
-      pickerEl.value = '';
-      pickerEl.classList.remove('active');
-    }
-  } else if (which === 'tomorrow') {
-    if (qaDate === tomorrowStr) {
-      qaDate = null;
-      btnTomorrow.classList.remove('active');
-    } else {
-      qaDate = tomorrowStr;
-      btnTomorrow.classList.add('active');
-      btnToday.classList.remove('active');
-      pickerEl.value = '';
-      pickerEl.classList.remove('active');
-    }
-  }
-}
-
-function handleQADatePicker() {
-  const val = document.getElementById('qaDate').value;
-  const pickerEl = document.getElementById('qaDate');
-  const btnToday = document.getElementById('qaBtnToday');
-  const btnTomorrow = document.getElementById('qaBtnTomorrow');
-  if (val) {
-    qaDate = val;
-    btnToday.classList.remove('active');
-    btnTomorrow.classList.remove('active');
-    pickerEl.classList.add('active');
-  } else {
-    qaDate = null;
-    pickerEl.classList.remove('active');
-  }
-}
-
-function resetQADate() {
-  qaDate = null;
-  const btnToday = document.getElementById('qaBtnToday');
-  const btnTomorrow = document.getElementById('qaBtnTomorrow');
-  const pickerEl = document.getElementById('qaDate');
-  if (btnToday) btnToday.classList.remove('active');
-  if (btnTomorrow) btnTomorrow.classList.remove('active');
-  if (pickerEl) {
-    pickerEl.value = '';
-    pickerEl.classList.remove('active');
-  }
-}
-
-async function quickAddTask() {
-  const input = document.getElementById('qaInput');
-  const title = input.value.trim();
-  if (!title) return;
-
-  const btn = document.getElementById('qaBtn');
-  btn.disabled = true;
-
-  const dateVal = qaDate || null;
-  const now = new Date().toISOString();
-
-  const newTask = {
-    title,
-    status: 'open',
-    energy: qaEnergy,
-    due_date: dateVal,
-    created_at: now,
-    updated_at: now,
-    created_by: 'user',
-    tags: [],
-    notes: null,
-    due_time: null,
-    parent_id: null,
-    waiting_on: null,
-    waiting_followup: null,
-    sort_order: tasks.length,
-  };
-
-  const { data, error } = await sb.from('tasks').insert(newTask).select().single();
-  btn.disabled = false;
-  if (error) {
-    showToast('Error adding task: ' + error.message);
-    return;
-  }
-
-  tasks.push(data);
-  localStorage.setItem('tasks_cache', JSON.stringify(tasks));
-
-  // Reset
-  input.value = '';
-  resetQADate();
-  document.querySelectorAll('.energy-pick').forEach((b) => b.classList.remove('active'));
-  setQaEnergy(null);
-
-  showToast('Task added');
-  renderCurrentTab();
-}
-
-// Enter key to add
-document.getElementById('qaInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') quickAddTask();
-});
-
-// ─── Edit Modal ───
-// ══════════════════════════════════════════════════════════════
-// ─── DASHBOARDS ───
-// ══════════════════════════════════════════════════════════════
-
+// ─── Dashboards Router ───
 function renderDashboards(mc) {
   let html = `<div class="dash-subnav">`;
   DASHBOARD_VIEWS.forEach((d) => {
@@ -672,11 +477,6 @@ function switchDashboard(id) {
   renderCurrentTab();
 }
 
-
-// ─── Keyboard: Add block modal ───
-document.getElementById('blockTitle').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') saveNewBlock();
-});
 
 // ─── Global Keyboard Shortcuts ───
 document.addEventListener('keydown', function (e) {
@@ -754,5 +554,8 @@ Object.assign(window, {
 setTabEventsCallbacks(renderCurrentTab, wireSearchInput);
 setTabViewsCallbacks(renderCurrentTab, wireSearchInput);
 setModalsCallbacks(renderCurrentTab);
+setTaskActionsCallbacks(renderCurrentTab);
+setQuickAddCallbacks(renderCurrentTab);
 initModalListeners();
+initQuickAddListeners();
 checkSession();
