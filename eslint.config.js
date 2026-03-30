@@ -1,14 +1,15 @@
 const prettier = require('eslint-config-prettier');
+const tsParser = require('@typescript-eslint/parser');
 
 module.exports = [
   {
-    files: ['**/*.js'],
-    ignores: ['node_modules/**'],
+    files: ['src/**/*.ts', 'src/**/*.js'],
+    ignores: ['node_modules/**', 'dist/**'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
+      sourceType: 'module',
+      parser: tsParser,
       globals: {
-        // Browser globals
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
@@ -26,12 +27,12 @@ module.exports = [
         event: 'readonly',
         requestAnimationFrame: 'readonly',
         HTMLElement: 'readonly',
+        Element: 'readonly',
         Event: 'readonly',
         KeyboardEvent: 'readonly',
         MouseEvent: 'readonly',
         TouchEvent: 'readonly',
-        // Supabase CDN global
-        supabase: 'readonly',
+        Object: 'readonly',
       },
     },
     rules: {
@@ -41,7 +42,7 @@ module.exports = [
       'no-constant-condition': 'warn',
       'no-debugger': 'error',
       'no-duplicate-case': 'error',
-      'eqeqeq': ['warn', 'smart'],
+      eqeqeq: ['warn', 'smart'],
       'no-eval': 'error',
       'no-implied-eval': 'error',
     },
