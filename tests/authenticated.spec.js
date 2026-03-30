@@ -4,7 +4,7 @@ const { login } = require('./login');
 // Helper: switch to a tab, opening "More" menu if needed
 async function switchTab(page, tabId) {
   // Main tabs: day, focus, all, streams, week. Others are in "More" dropdown.
-  const mainTabs = ['day', 'focus', 'all', 'week'];
+  const mainTabs = ['day', 'focus', 'all'];
   if (mainTabs.includes(tabId)) {
     await page.locator(`#tabBar > button[data-tab="${tabId}"]`).click();
   } else {
