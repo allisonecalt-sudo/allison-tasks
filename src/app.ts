@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import {
   localDateStr,
   today,
@@ -12,69 +11,20 @@ import {
   isTomorrow,
   daysFromToday,
 } from './dates';
+import { sb, getTagIcon } from './config';
+import * as State from './state';
+import { TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew } from './state';
 
-// ─── Config ───
-const SUPABASE_URL = 'https://hpiyvnfhoqnnnotrmwaz.supabase.co';
-const SUPABASE_ANON =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwaXl2bmZob3Fubm5vdHJtd2F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzIwNDEsImV4cCI6MjA4ODA0ODA0MX0.AsGhYitkSnyVMwpJII05UseS_gICaXiCy7d8iHsr6Qw';
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-// ─── Tag Icon Map (hardcoded because Supabase REST API mangles emoji) ───
-const TAG_ICONS = {
-  finance: '💰',
-  apartment: '🏠',
-  'carmei-gat': '🏠',
-  health: '🏥',
-  dating: '💑',
-  'work-clalit': '💼',
-  'work-petachya': '💼',
-  career: '📚',
-  personal: '📋',
-  travel: '✈️',
-  pesach: '🕎',
-  family: '👨‍👩‍👧',
-  'phone-call': '📞',
-  computer: '💻',
-  errands: '🏃',
-  'at-clalit': '🏢',
-  'at-petachya': '🏢',
-  'at-home': '🏠',
-  admin: '📝',
-  accountant: '🧾',
-  'second-degree': '🎓',
-  'budget-app': '📊',
-  ivchun: '📋',
-  'ef-app': '🧠',
-  eforts: '📊',
-  'the-trail': '🔥',
-  torah: '📖',
-  writing: '✍️',
-  'usa-shopping': '🛒',
-  merav: '👤',
-  katya: '👤',
-  reuben: '👤',
-  marom: '👤',
-  waiting: '⏳',
-  test: '🧪',
-};
-function getTagIcon(name) {
-  return TAG_ICONS[name] || '';
-}
-
-// ─── State ───
-let tasks = [];
-let tagDefs = [];
-let currentTab = 'day';
-let editingTaskId = null;
-let qaEnergy = null;
-let dayNowTimer = null;
-let viewingDate = today(); // The date currently shown in My Day
-let lowCapacity = false;
-let dayFilter = null; // category filter for My Day: null = all
-
-function hasHebrew(text) {
-  return /[\u0590-\u05FF]/.test(text);
-}
+// ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
+let tasks = State.tasks;
+let tagDefs = State.tagDefs;
+let currentTab = State.currentTab;
+let editingTaskId = State.editingTaskId;
+let qaEnergy = State.qaEnergy;
+let dayNowTimer = State.dayNowTimer;
+let viewingDate = State.viewingDate;
+let lowCapacity = State.lowCapacity;
+let dayFilter = State.dayFilter;
 
 function toggleLowCapacity() {
   lowCapacity = !lowCapacity;
@@ -91,48 +41,10 @@ function toggleLowCapacity() {
   renderCurrentTab();
 }
 
-// ─── Recurring Events ───
-const RECURRING = [
-  // Recurring events live in their own tab — not auto-populated on day view
-];
-
-const TABS = [
-  { id: 'day', label: 'My Day' },
-  { id: 'focus', label: 'Focus' },
-  { id: 'all', label: 'All' },
-  { id: 'streams', label: 'Streams' },
-  { id: 'week', label: 'Week' },
-  { id: 'events', label: 'Events' },
-  { id: 'recurring', label: 'Recurring' },
-  { id: 'done', label: 'Done' },
-  { id: 'history', label: 'History' },
-  { id: 'dashboards', label: 'Dashboards' },
-];
-
-const DASHBOARD_VIEWS = [
-  { id: 'triage', label: 'Triage' },
-  { id: 'overload', label: 'Overload' },
-  { id: 'weekly', label: 'Weekly' },
-  { id: 'energy', label: 'Energy' },
-  { id: 'waiting', label: 'Waiting' },
-  { id: 'health', label: 'Streams' },
-  { id: 'backlog', label: 'Backlog' },
-  { id: 'review', label: 'Daily Review' },
-];
-let currentDashboard = 'triage';
-
-let allFilters = {
-  search: '',
-  tags: [],
-  energy: null,
-  status: null,
-  sort: 'due',
-  sortDir: 'asc',
-  noDate: false,
-  timeRange: null,
-};
-let focusSearch = '';
-let globalSearch = '';
+let currentDashboard = State.currentDashboard;
+let allFilters = State.allFilters;
+let focusSearch = State.focusSearch;
+let globalSearch = State.globalSearch;
 
 function matchesSearch(task, query) {
   if (!query) return true;
@@ -831,7 +743,7 @@ async function renderDay(mc) {
   html += '<div style="display:flex;gap:.4rem;padding:.3rem .8rem;flex-wrap:wrap">';
   filterTags.forEach((f) => {
     const active = dayFilter === f.tag;
-    const icon = TAG_ICONS[f.tag] || '';
+    const icon = getTagIcon(f.tag) || '';
     html += `<button onclick="dayFilter=${active ? 'null' : "'" + f.tag + "'"};renderCurrentTab()" style="
       padding:.25rem .6rem;border-radius:999px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};
       background:${active ? 'var(--accent)' : 'var(--card-bg)'};color:${active ? '#fff' : 'var(--muted)'};
