@@ -14,6 +14,7 @@ import {
 import { sb, getTagIcon } from './config';
 import * as State from './state';
 import { TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew } from './state';
+import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
 
 // ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
 let tasks = State.tasks;
@@ -117,77 +118,22 @@ function wireSearchInput(container, varName) {
   });
 }
 
-// ─── Auth ───
-async function doLogin() {
-  const email = document.getElementById('authEmail').value.trim();
-  const pass = document.getElementById('authPass').value;
-  const errEl = document.getElementById('authError');
-  const btn = document.getElementById('authBtn');
-  errEl.textContent = '';
-  if (!email || !pass) {
-    errEl.textContent = 'Please enter email and password';
-    return;
-  }
-  btn.disabled = true;
-  btn.textContent = 'Signing in...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  btn.disabled = false;
-  btn.textContent = 'Sign In';
-  if (error) {
-    errEl.textContent = error.message;
-    return;
-  }
-  showApp();
+// ─── Auth (wiring) ───
+function doLogin() {
+  return _doLogin(showApp);
 }
-async function doLogout() {
-  await sb.auth.signOut();
-  document.getElementById('app').classList.remove('visible');
-  document.getElementById('authScreen').style.display = 'flex';
-  localStorage.removeItem('tasks_cache');
-}
-async function checkSession() {
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (session) showApp();
+function checkSession() {
+  return _checkSession(showApp);
 }
 
 async function showApp() {
-  document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('app').classList.add('visible');
+  document.getElementById('authScreen')!.style.display = 'none';
+  document.getElementById('app')!.classList.add('visible');
   updateHeader();
   renderTabBar();
   await renderCountersBar();
   loadCached();
   await refreshData();
-}
-
-function updateHeader() {
-  const now = new Date();
-  const h = now.getHours();
-  let greeting = 'Good morning';
-  if (h >= 12 && h < 17) greeting = 'Good afternoon';
-  else if (h >= 17 && h < 21) greeting = 'Good evening';
-  else if (h >= 21 || h < 5) greeting = 'Good night';
-  document.getElementById('hdrGreeting').textContent = greeting;
-
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  document.getElementById('hdrDate').textContent =
-    `${days[now.getDay()]} ${months[now.getMonth()]} ${now.getDate()}`;
 }
 
 // ─── Data ───
