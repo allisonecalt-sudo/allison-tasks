@@ -1,8 +1,40 @@
-import { tasks, tagDefs, viewingDate, lowCapacity, dayFilter, dayNowTimer, currentTab, allFilters, focusSearch, globalSearch, hasHebrew, RECURRING, setViewingDate, setDayNowTimer } from './state';
-import { today, localDateStr, formatDate, formatDateLong, daysFromToday, daysAgo, isOverdue, isToday, isTomorrow, timeAgo, getWeekDates } from './dates';
+import {
+  tasks,
+  tagDefs,
+  viewingDate,
+  lowCapacity,
+  dayFilter,
+  dayNowTimer,
+  currentTab,
+  allFilters,
+  focusSearch,
+  globalSearch,
+  hasHebrew,
+  RECURRING,
+  setViewingDate,
+  setDayNowTimer,
+} from './state';
+import {
+  today,
+  localDateStr,
+  formatDate,
+  formatDateLong,
+  daysFromToday,
+  daysAgo,
+  isOverdue,
+  isToday,
+  isTomorrow,
+  timeAgo,
+  getWeekDates,
+} from './dates';
 import { sb, getTagIcon } from './config';
 import { esc, emptyState, showToast, matchesSearch, highlightSearch, buildSearchBar } from './ui';
-import { getEventsForDate, getRecurringData, getRecurringOccurrences, isDoneForDate } from './events-data';
+import {
+  getEventsForDate,
+  getRecurringData,
+  getRecurringOccurrences,
+  isDoneForDate,
+} from './events-data';
 import { renderTaskCard } from './task-card';
 
 // Late-bound callbacks
@@ -1123,4 +1155,3 @@ export async function saveHistoryNote(historyId, btn) {
   if (currentTab === 'history') renderHistory(document.getElementById('mainContent'));
   showToast('Note saved ✓');
 }
-

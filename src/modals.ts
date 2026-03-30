@@ -1,5 +1,13 @@
 import { sb, getTagIcon } from './config';
-import { tasks, tagDefs, editingTaskId, viewingDate, setEditingTaskId, setTasks, setViewingDate } from './state';
+import {
+  tasks,
+  tagDefs,
+  editingTaskId,
+  viewingDate,
+  setEditingTaskId,
+  setTasks,
+  setViewingDate,
+} from './state';
 import { today, formatDate } from './dates';
 import { esc, showToast } from './ui';
 
@@ -23,7 +31,8 @@ export function openEditModal(id) {
   (document.getElementById('editDueDate') as HTMLInputElement).value = t.due_date || '';
   (document.getElementById('editDueTime') as HTMLInputElement).value = t.due_time || '';
   (document.getElementById('editWaitingOn') as HTMLInputElement).value = t.waiting_on || '';
-  (document.getElementById('editWaitingFollowup') as HTMLInputElement).value = t.waiting_followup || '';
+  (document.getElementById('editWaitingFollowup') as HTMLInputElement).value =
+    t.waiting_followup || '';
 
   // Energy
   document
@@ -45,7 +54,8 @@ export function openEditModal(id) {
 }
 
 function toggleWaitingSection() {
-  const isWaiting = (document.getElementById('editStatus') as HTMLSelectElement).value === 'waiting';
+  const isWaiting =
+    (document.getElementById('editStatus') as HTMLSelectElement).value === 'waiting';
   document.getElementById('editWaitingSection').style.display = isWaiting ? 'block' : 'none';
 }
 
@@ -169,11 +179,16 @@ export function hasUnsavedModalChanges() {
   if (!editingTaskId) return false;
   const t = tasks.find((x) => x.id === editingTaskId);
   if (!t) return false;
-  if ((document.getElementById('editTitle') as HTMLInputElement).value !== (t.title || '')) return true;
-  if ((document.getElementById('editNotes') as HTMLTextAreaElement).value !== (t.notes || '')) return true;
-  if ((document.getElementById('editStatus') as HTMLSelectElement).value !== (t.status || 'open')) return true;
-  if ((document.getElementById('editDueDate') as HTMLInputElement).value !== (t.due_date || '')) return true;
-  if ((document.getElementById('editDueTime') as HTMLInputElement).value !== (t.due_time || '')) return true;
+  if ((document.getElementById('editTitle') as HTMLInputElement).value !== (t.title || ''))
+    return true;
+  if ((document.getElementById('editNotes') as HTMLTextAreaElement).value !== (t.notes || ''))
+    return true;
+  if ((document.getElementById('editStatus') as HTMLSelectElement).value !== (t.status || 'open'))
+    return true;
+  if ((document.getElementById('editDueDate') as HTMLInputElement).value !== (t.due_date || ''))
+    return true;
+  if ((document.getElementById('editDueTime') as HTMLInputElement).value !== (t.due_time || ''))
+    return true;
   return false;
 }
 
@@ -186,8 +201,10 @@ export async function saveTask() {
   const status = (document.getElementById('editStatus') as HTMLSelectElement).value;
   const dueDate = (document.getElementById('editDueDate') as HTMLInputElement).value || null;
   const dueTime = (document.getElementById('editDueTime') as HTMLInputElement).value || null;
-  const waitingOn = (document.getElementById('editWaitingOn') as HTMLInputElement).value.trim() || null;
-  const waitingFollowup = (document.getElementById('editWaitingFollowup') as HTMLInputElement).value || null;
+  const waitingOn =
+    (document.getElementById('editWaitingOn') as HTMLInputElement).value.trim() || null;
+  const waitingFollowup =
+    (document.getElementById('editWaitingFollowup') as HTMLInputElement).value || null;
 
   const activeEnergy = document.querySelector('.modal-energy-btn.active') as HTMLElement;
   const energy = activeEnergy ? activeEnergy.dataset.e : null;
@@ -202,10 +219,16 @@ export async function saveTask() {
   }
 
   const update: any = {
-    title, notes, status, energy,
-    due_date: dueDate, due_time: dueTime,
-    waiting_on: waitingOn, waiting_followup: waitingFollowup,
-    tags: selectedTags, updated_at: now,
+    title,
+    notes,
+    status,
+    energy,
+    due_date: dueDate,
+    due_time: dueTime,
+    waiting_on: waitingOn,
+    waiting_followup: waitingFollowup,
+    tags: selectedTags,
+    updated_at: now,
   };
 
   const oldTask = tasks.find((t) => t.id === editingTaskId);
@@ -219,14 +242,26 @@ export async function saveTask() {
   }
 
   if (oldTask) {
-    const fields = ['title', 'notes', 'status', 'energy', 'due_date', 'due_time', 'waiting_on', 'waiting_followup'];
+    const fields = [
+      'title',
+      'notes',
+      'status',
+      'energy',
+      'due_date',
+      'due_time',
+      'waiting_on',
+      'waiting_followup',
+    ];
     for (const f of fields) {
       const oldVal = oldTask[f] || '';
       const newVal = update[f] || '';
       if (String(oldVal) !== String(newVal)) {
         await sb.from('task_history').insert({
-          task_id: editingTaskId, field_changed: f,
-          old_value: String(oldVal), new_value: String(newVal), changed_at: now,
+          task_id: editingTaskId,
+          field_changed: f,
+          old_value: String(oldVal),
+          new_value: String(newVal),
+          changed_at: now,
         });
       }
     }
@@ -234,8 +269,11 @@ export async function saveTask() {
     const newTags = selectedTags.sort().join(',');
     if (oldTags !== newTags) {
       await sb.from('task_history').insert({
-        task_id: editingTaskId, field_changed: 'tags',
-        old_value: oldTags, new_value: newTags, changed_at: now,
+        task_id: editingTaskId,
+        field_changed: 'tags',
+        old_value: oldTags,
+        new_value: newTags,
+        changed_at: now,
       });
     }
   }
@@ -335,9 +373,18 @@ export async function saveNewBlock() {
   const endTime = (document.getElementById('blockEndTime') as HTMLInputElement).value;
   const btn = document.getElementById('blockSaveBtn') as HTMLButtonElement;
 
-  if (!title) { showToast('Please enter a title'); return; }
-  if (!blockDate) { showToast('Please set a date'); return; }
-  if (!startTime || !endTime) { showToast('Please set start and end times'); return; }
+  if (!title) {
+    showToast('Please enter a title');
+    return;
+  }
+  if (!blockDate) {
+    showToast('Please set a date');
+    return;
+  }
+  if (!startTime || !endTime) {
+    showToast('Please set start and end times');
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Saving...';
@@ -346,11 +393,20 @@ export async function saveNewBlock() {
   const now = new Date().toISOString();
 
   const newTask = {
-    title, status: 'open', energy: null,
-    due_date: blockDate, due_time: dueTime,
-    created_at: now, updated_at: now, created_by: 'user',
-    tags: [], notes: null, parent_id: null,
-    waiting_on: null, waiting_followup: null, sort_order: tasks.length,
+    title,
+    status: 'open',
+    energy: null,
+    due_date: blockDate,
+    due_time: dueTime,
+    created_at: now,
+    updated_at: now,
+    created_by: 'user',
+    tags: [],
+    notes: null,
+    parent_id: null,
+    waiting_on: null,
+    waiting_followup: null,
+    sort_order: tasks.length,
   };
 
   try {

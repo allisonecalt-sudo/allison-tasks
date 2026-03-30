@@ -64,10 +64,7 @@ export function highlightSearch(text: string): string {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   let result = escaped;
   words.forEach((w: string) => {
-    const re = new RegExp(
-      '(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')',
-      'gi',
-    );
+    const re = new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
     result = result.replace(re, '<mark class="search-hl">$1</mark>');
   });
   return result;

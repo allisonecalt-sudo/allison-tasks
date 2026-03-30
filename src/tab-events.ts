@@ -4,12 +4,20 @@ import { tasks, globalSearch } from './state';
 import { showToast } from './ui';
 import { getWeekDates } from './dates';
 import {
-  getEventsData, saveEventsData,
+  getEventsData,
+  saveEventsData,
   getRecurringEventsData,
-  loadRecurringEventsFromSupabase, addRecurringEventToSupabase, deleteRecurringEventFromSupabase,
-  getRecurringData, saveRecurringItem, deleteRecurringItem,
-  getRecurringOccurrences, getDaysUntilDue,
-  getCountersData, saveCounter, deleteCounterById,
+  loadRecurringEventsFromSupabase,
+  addRecurringEventToSupabase,
+  deleteRecurringEventFromSupabase,
+  getRecurringData,
+  saveRecurringItem,
+  deleteRecurringItem,
+  getRecurringOccurrences,
+  getDaysUntilDue,
+  getCountersData,
+  saveCounter,
+  deleteCounterById,
   clearRecurringEventsCache,
 } from './events-data';
 
@@ -97,7 +105,8 @@ export function renderEvents(mc) {
   const todayStr = today();
   function getWeekGroup(dateStr) {
     const diff = Math.floor(
-      (new Date(dateStr + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000,
+      (new Date(dateStr + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) /
+        86400000,
     );
     if (diff < 0) return 'Past';
     if (diff < 7) return 'This Week';
@@ -272,7 +281,9 @@ export async function renderRecurring(mc) {
           : `Every ${r.frequency_days} day${r.frequency_days !== 1 ? 's' : ''}`;
       const lastDoneText = r.last_done ? `Last done: ${formatDate(r.last_done)}` : 'Never done';
       occs.forEach((occ) => {
-        const daysUntil = Math.ceil((occ.date - new Date(today() + 'T00:00:00').getTime()) / 86400000);
+        const daysUntil = Math.ceil(
+          (occ.date - new Date(today() + 'T00:00:00').getTime()) / 86400000,
+        );
         let dotColor = '#2d6a4f';
         let dueText = `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
         if (daysUntil <= 0) {
