@@ -102,3 +102,17 @@ export function daysFromToday(dateStr: string): string {
   if (diff > 0) return `In ${diff} days`;
   return `${Math.abs(diff)} days ago`;
 }
+
+export function getWeekDates(dateStr: string): string[] {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = d.getDay();
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - dayOfWeek);
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const wd = new Date(sunday);
+    wd.setDate(sunday.getDate() + i);
+    dates.push(localDateStr(wd));
+  }
+  return dates;
+}
