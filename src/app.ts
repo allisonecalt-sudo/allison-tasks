@@ -13,8 +13,16 @@ import {
   getWeekDates,
 } from './dates';
 import { sb, getTagIcon } from './config';
-import * as State from './state';
-import { TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew } from './state';
+import {
+  TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew,
+  tasks, tagDefs, currentTab, editingTaskId, qaEnergy, dayNowTimer,
+  viewingDate, lowCapacity, dayFilter, currentDashboard, allFilters,
+  focusSearch, globalSearch,
+  setTasks, setTagDefs, setCurrentTab, setEditingTaskId, setQaEnergy,
+  setDayNowTimer, setViewingDate, setLowCapacity, setDayFilter,
+  setCurrentDashboard, setFocusSearch, setGlobalSearch, setAllFilters,
+  resetAllFilters,
+} from './state';
 import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
 import { esc, emptyState, showToast, toastUndo, matchesSearch, highlightSearch, buildSearchBar } from './ui';
 import {
@@ -52,19 +60,10 @@ import {
   renderWeekTab, setTabEventsCallbacks,
 } from './tab-events';
 
-// ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
-let tasks = State.tasks;
-let tagDefs = State.tagDefs;
-let currentTab = State.currentTab;
-let editingTaskId = State.editingTaskId;
-let qaEnergy = State.qaEnergy;
-let dayNowTimer = State.dayNowTimer;
-let viewingDate = State.viewingDate;
-let lowCapacity = State.lowCapacity;
-let dayFilter = State.dayFilter;
+// State variables imported directly from ./state
 
 function toggleLowCapacity() {
-  lowCapacity = !lowCapacity;
+  setLowCapacity(!lowCapacity);
   const btn = document.getElementById('lowCapBtn');
   if (btn) {
     btn.innerHTML = lowCapacity ? '&#x1FAAB;' : '&#x1F50B;';
@@ -77,11 +76,6 @@ function toggleLowCapacity() {
   showToast(lowCapacity ? 'Low capacity mode — low energy tasks only' : 'Showing all tasks');
   renderCurrentTab();
 }
-
-let currentDashboard = State.currentDashboard;
-let allFilters = State.allFilters;
-let focusSearch = State.focusSearch;
-let globalSearch = State.globalSearch;
 
 // matchesSearch, highlightSearch, buildSearchBar → imported from ./ui
 
@@ -103,16 +97,16 @@ function wireSearchInput(container, varName) {
   el.addEventListener('input', function () {
     const v = this.value;
     if (varName === 'allFilters.search') allFilters.search = v;
-    else if (varName === 'focusSearch') focusSearch = v;
-    else globalSearch = v;
+    else if (varName === 'focusSearch') setFocusSearch(v);
+    else setGlobalSearch(v);
     clearTimeout(_searchTimer);
     _searchTimer = setTimeout(renderCurrentTab, 150);
   });
   el.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       if (varName === 'allFilters.search') allFilters.search = '';
-      else if (varName === 'focusSearch') focusSearch = '';
-      else globalSearch = '';
+      else if (varName === 'focusSearch') setFocusSearch('');
+      else setGlobalSearch('');
       clearTimeout(_searchTimer);
       renderCurrentTab();
     }
@@ -142,12 +136,12 @@ function loadCached() {
   try {
     const c = localStorage.getItem('tasks_cache');
     if (c) {
-      tasks = JSON.parse(c);
+      setTasks(JSON.parse(c));
       renderCurrentTab();
     }
     const t = localStorage.getItem('tags_cache');
     if (t) {
-      tagDefs = JSON.parse(t);
+      setTagDefs(JSON.parse(t));
     }
   } catch (e) {}
 }
@@ -161,8 +155,8 @@ async function refreshData() {
     ]);
     if (tasksRes.error) throw tasksRes.error;
     if (tagsRes.error) throw tagsRes.error;
-    tasks = (tasksRes.data || []).map((t) => (t.status === 'todo' ? { ...t, status: 'open' } : t));
-    tagDefs = tagsRes.data || [];
+    setTasks((tasksRes.data || []).map((t) => (t.status === 'todo' ? { ...t, status: 'open' } : t)));
+    setTagDefs(tagsRes.data || []);
     localStorage.setItem('tasks_cache', JSON.stringify(tasks));
     localStorage.setItem('tags_cache', JSON.stringify(tagDefs));
   } catch (e) {
@@ -301,15 +295,15 @@ function closeTabMore() {
 document.addEventListener('click', closeTabMore);
 
 async function switchTab(id) {
-  currentTab = id;
-  allFilters = { search: '', tags: [], energy: null, status: null, noDate: false };
-  focusSearch = '';
-  globalSearch = '';
+  setCurrentTab(id);
+  resetAllFilters();
+  setFocusSearch('');
+  setGlobalSearch('');
   if (id !== 'day' && dayNowTimer) {
     clearInterval(dayNowTimer);
-    dayNowTimer = null;
+    setDayNowTimer(null);
   }
-  if (id === 'day') viewingDate = today();
+  if (id === 'day') setViewingDate(today());
   document
     .querySelectorAll('.tab-btn')
     .forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
@@ -424,17 +418,17 @@ async function renderCurrentTab() {
 function navigateDay(offset) {
   const d = new Date(viewingDate + 'T00:00:00');
   d.setDate(d.getDate() + offset);
-  viewingDate = localDateStr(d);
+  setViewingDate(localDateStr(d));
   renderCurrentTab();
 }
 function jumpToDay(dateStr) {
   if (dateStr) {
-    viewingDate = dateStr;
+    setViewingDate(dateStr);
     renderCurrentTab();
   }
 }
 function jumpToToday() {
-  viewingDate = today();
+  setViewingDate(today());
   renderCurrentTab();
 }
 
@@ -486,7 +480,7 @@ async function renderDay(mc) {
   // Stop any existing now-line timer
   if (dayNowTimer) {
     clearInterval(dayNowTimer);
-    dayNowTimer = null;
+    setDayNowTimer(null);
   }
 
   // Fetch Supabase recurring items
@@ -872,7 +866,7 @@ async function renderDay(mc) {
 
   // Update now line every minute — only when viewing today
   if (isViewingToday) {
-    dayNowTimer = setInterval(updateDayNowLine, 60000);
+    setDayNowTimer(setInterval(updateDayNowLine, 60000));
   }
 }
 
@@ -1604,10 +1598,10 @@ function pickQAEnergy(btn) {
   const wasActive = btn.classList.contains('active');
   document.querySelectorAll('.energy-pick').forEach((b) => b.classList.remove('active'));
   if (wasActive) {
-    qaEnergy = null;
+    setQaEnergy(null);
   } else {
     btn.classList.add('active');
-    qaEnergy = btn.dataset.e;
+    setQaEnergy(btn.dataset.e);
   }
 }
 
@@ -1715,7 +1709,7 @@ async function quickAddTask() {
   input.value = '';
   resetQADate();
   document.querySelectorAll('.energy-pick').forEach((b) => b.classList.remove('active'));
-  qaEnergy = null;
+  setQaEnergy(null);
 
   showToast('Task added');
   renderCurrentTab();
@@ -1728,7 +1722,7 @@ document.getElementById('qaInput').addEventListener('keydown', (e) => {
 
 // ─── Edit Modal ───
 function openEditModal(id) {
-  editingTaskId = id;
+  setEditingTaskId(id);
   const t = tasks.find((x) => x.id === id);
   if (!t) return;
 
@@ -1839,7 +1833,7 @@ async function deleteSubtask(id, parentId) {
     showToast('Error deleting subtask');
     return;
   }
-  tasks = tasks.filter((t) => t.id !== id);
+  setTasks(tasks.filter((t) => t.id !== id));
   renderEditSubtasks(parentId);
   renderCurrentTab();
 }
@@ -1879,7 +1873,7 @@ function pickModalEnergy(btn) {
 function closeModal() {
   document.getElementById('editModal').classList.remove('visible');
   document.body.style.overflow = '';
-  editingTaskId = null;
+  setEditingTaskId(null);
 }
 
 // Close modal on overlay click
@@ -2041,7 +2035,7 @@ function confirmDeleteTask() {
   const originalStatus = taskToDelete.status;
 
   // Optimistically remove from local state and close modal
-  tasks = tasks.filter((t) => t.id !== deletingId);
+  setTasks(tasks.filter((t) => t.id !== deletingId));
   localStorage.setItem('tasks_cache', JSON.stringify(tasks));
   closeModal();
   renderCurrentTab();
@@ -2149,7 +2143,7 @@ async function saveNewBlock() {
 
     tasks.push(data);
     localStorage.setItem('tasks_cache', JSON.stringify(tasks));
-    viewingDate = blockDate;
+    setViewingDate(blockDate);
 
     showToast('Time block added');
     closeBlockModal();
@@ -2212,7 +2206,7 @@ function renderDashboards(mc) {
 }
 
 function switchDashboard(id) {
-  currentDashboard = id;
+  setCurrentDashboard(id);
   renderCurrentTab();
 }
 
