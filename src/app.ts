@@ -1,30 +1,16 @@
+import { localDateStr, today, isOverdue, isToday, isTomorrow } from './dates';
+import { sb } from './config';
 import {
-  localDateStr,
-  today,
-  tomorrow,
-  daysAgo,
-  formatDate,
-  formatDateLong,
-  timeAgo,
-  isOverdue,
-  isToday,
-  isTomorrow,
-  daysFromToday,
-  getWeekDates,
-} from './dates';
-import { sb, getTagIcon } from './config';
-import {
-  TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew,
-  tasks, tagDefs, currentTab, editingTaskId, qaEnergy, dayNowTimer,
-  viewingDate, lowCapacity, dayFilter, currentDashboard, allFilters,
-  focusSearch, globalSearch,
-  setTasks, setTagDefs, setCurrentTab, setEditingTaskId, setQaEnergy,
-  setDayNowTimer, setViewingDate, setLowCapacity, setDayFilter,
-  setCurrentDashboard, setFocusSearch, setGlobalSearch, setAllFilters,
+  TABS, DASHBOARD_VIEWS,
+  tasks, tagDefs, currentTab, dayNowTimer, viewingDate, lowCapacity,
+  currentDashboard, allFilters, focusSearch, globalSearch,
+  setTasks, setTagDefs, setCurrentTab,
+  setDayNowTimer, setViewingDate, setLowCapacity,
+  setCurrentDashboard, setFocusSearch, setGlobalSearch,
   resetAllFilters,
 } from './state';
 import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
-import { esc, emptyState, showToast, toastUndo, matchesSearch, highlightSearch, buildSearchBar } from './ui';
+import { showToast, toastUndo, buildSearchBar } from './ui';
 import {
   buildWeeklyPlanning, buildEnergyBudget, buildWaitingTracker,
   buildStreamHealth, buildBacklogReview, buildDailyReview,
@@ -32,31 +18,15 @@ import {
   pickEnergyDash, filterFloaters, toggleWeekRow,
 } from './dashboards';
 import {
-  getEventsData,
-  saveEventsData,
-  getRecurringEventsData,
-  saveRecurringEventsData,
-  loadRecurringEventsFromSupabase,
-  addRecurringEventToSupabase,
-  deleteRecurringEventFromSupabase,
-  getEventsForDate,
-  getRecurringData,
-  saveRecurringItem,
-  deleteRecurringItem,
-  getRecurringOccurrences,
-  getDaysUntilDue,
-  getCountersData,
-  saveCounter,
-  deleteCounterById,
-  isDoneForDate,
-  clearRecurringEventsCache,
+  getEventsData, saveRecurringEventsData,
+  loadRecurringEventsFromSupabase, getRecurringData, getDaysUntilDue,
 } from './events-data';
-import { renderTaskCard, toggleCardExpand } from './task-card';
+import { toggleCardExpand } from './task-card';
 import {
   openEditModal, closeModal, saveTask, confirmCompleteTask, confirmDeleteTask,
   closeConfirm, toggleModalTag, pickModalEnergy, addSubtask, deleteSubtask,
   updateSubtaskDate, renderEditSubtasks, openBlockModal, closeBlockModal,
-  saveNewBlock, hasUnsavedModalChanges, setModalsCallbacks, initModalListeners,
+  saveNewBlock, setModalsCallbacks, initModalListeners,
 } from './modals';
 import {
   navigateDay, jumpToDay, jumpToToday, renderDay, renderFocus, renderStreams,
@@ -77,8 +47,7 @@ import {
   setQuickAddCallbacks, initQuickAddListeners,
 } from './quick-add';
 
-// State variables imported directly from ./state
-
+// ─── Low Capacity Toggle ───
 function toggleLowCapacity() {
   setLowCapacity(!lowCapacity);
   const btn = document.getElementById('lowCapBtn');
@@ -86,26 +55,21 @@ function toggleLowCapacity() {
     btn.innerHTML = lowCapacity ? '&#x1FAAB;' : '&#x1F50B;';
     btn.style.background = lowCapacity ? '#f59e0b22' : '';
     btn.style.borderColor = lowCapacity ? '#f59e0b' : '';
-    btn.title = lowCapacity
-      ? 'Low capacity ON — showing only low energy tasks'
-      : 'Low capacity mode';
+    btn.title = lowCapacity ? 'Low capacity ON — showing only low energy tasks' : 'Low capacity mode';
   }
   showToast(lowCapacity ? 'Low capacity mode — low energy tasks only' : 'Showing all tasks');
   renderCurrentTab();
 }
 
-// matchesSearch, highlightSearch, buildSearchBar → imported from ./ui
-
+// ─── Search Input Wiring ───
 let _searchTimer = null;
 function wireSearchInput(container, varName) {
   const el = container.querySelector('.search-input[data-search-var="' + varName + '"]');
   if (!el) return;
   const val =
-    varName === 'allFilters.search'
-      ? allFilters.search
-      : varName === 'focusSearch'
-        ? focusSearch
-        : globalSearch;
+    varName === 'allFilters.search' ? allFilters.search
+    : varName === 'focusSearch' ? focusSearch
+    : globalSearch;
   if (val) {
     el.focus();
     const len = el.value.length;
@@ -130,13 +94,9 @@ function wireSearchInput(container, varName) {
   });
 }
 
-// ─── Auth (wiring) ───
-function doLogin() {
-  return _doLogin(showApp);
-}
-function checkSession() {
-  return _checkSession(showApp);
-}
+// ─── Auth Wiring ───
+function doLogin() { return _doLogin(showApp); }
+function checkSession() { return _checkSession(showApp); }
 
 async function showApp() {
   document.getElementById('authScreen')!.style.display = 'none';
@@ -152,15 +112,10 @@ async function showApp() {
 function loadCached() {
   try {
     const c = localStorage.getItem('tasks_cache');
-    if (c) {
-      setTasks(JSON.parse(c));
-      renderCurrentTab();
-    }
+    if (c) { setTasks(JSON.parse(c)); renderCurrentTab(); }
     const t = localStorage.getItem('tags_cache');
-    if (t) {
-      setTagDefs(JSON.parse(t));
-    }
-  } catch (e) {}
+    if (t) { setTagDefs(JSON.parse(t)); }
+  } catch (_e) {}
 }
 
 async function refreshData() {
@@ -200,51 +155,21 @@ function renderRibbon() {
 
   const stats = [
     { label: 'Open', val: openCount, cls: '', action: () => switchTab('all') },
-    {
-      label: 'Waiting',
-      val: waitCount,
-      cls: '',
-      action: () => {
-        switchTab('focus');
-      },
-    },
-    {
-      label: 'Decisions',
-      val: decideCount,
-      cls: decideCount > 0 ? 'blue' : '',
-      action: () => switchTab('focus'),
-    },
-    {
-      label: 'Need Attention',
-      val: overdueCount,
-      cls: overdueCount > 0 ? 'amber' : '',
-      action: () => switchTab('focus'),
-    },
-    {
-      label: 'Floating',
-      val: floatCount,
-      cls: '',
-      action: () => {
-        switchTab('all');
-        allFilters.noDate = true;
-        setTimeout(renderCurrentTab, 0);
-      },
-    },
+    { label: 'Waiting', val: waitCount, cls: '', action: () => switchTab('focus') },
+    { label: 'Decisions', val: decideCount, cls: decideCount > 0 ? 'blue' : '', action: () => switchTab('focus') },
+    { label: 'Need Attention', val: overdueCount, cls: overdueCount > 0 ? 'amber' : '', action: () => switchTab('focus') },
+    { label: 'Floating', val: floatCount, cls: '', action: () => { switchTab('all'); allFilters.noDate = true; setTimeout(renderCurrentTab, 0); } },
     { label: 'Done (7d)', val: doneWeek, cls: '', action: () => switchTab('done') },
   ];
-  window._ribbonActions = stats.map((s) => s.action);
+  (window as any)._ribbonActions = stats.map((s) => s.action);
 
   document.getElementById('ribbonGrid').innerHTML = stats
-    .map(
-      (s, i) =>
-        `<div class="ribbon-stat" onclick="ribbonStatClick(${i})" title="Click to view">
+    .map((s, i) => `<div class="ribbon-stat" onclick="ribbonStatClick(${i})" title="Click to view">
       <div class="ribbon-label">${s.label}</div>
       <div class="ribbon-val ${s.cls}">${s.val}</div>
-    </div>`,
-    )
+    </div>`)
     .join('');
 
-  // Update ribbon summary for mobile collapsed state
   const todayCount = tasks.filter(
     (t) => t.due_date === today() && t.status !== 'done' && t.status !== 'backlog',
   ).length;
@@ -257,7 +182,6 @@ function renderRibbon() {
     summaryEl.textContent = parts.length ? parts.join(' · ') : `${openCount} open`;
   }
 
-  // Collapse ribbon by default on mobile
   const ribbon = document.getElementById('ribbon');
   if (window.innerWidth <= 600 && !ribbon.dataset.userExpanded) {
     ribbon.classList.add('collapsed');
@@ -265,7 +189,7 @@ function renderRibbon() {
 }
 
 function ribbonStatClick(i) {
-  if (window._ribbonActions && window._ribbonActions[i]) window._ribbonActions[i]();
+  if ((window as any)._ribbonActions && (window as any)._ribbonActions[i]) (window as any)._ribbonActions[i]();
 }
 
 // ─── Tab Bar ───
@@ -276,26 +200,18 @@ function renderTabBar() {
   const moreActive = moreTabs.some((t) => t.id === currentTab);
 
   let html = mainTabs
-    .map(
-      (t) =>
-        `<button class="tab-btn ${t.id === currentTab ? 'active' : ''}"
+    .map((t) => `<button class="tab-btn ${t.id === currentTab ? 'active' : ''}"
       onclick="switchTab('${t.id}')" data-tab="${t.id}">
       ${t.label}<span class="tab-count" id="tabCount_${t.id}"></span>
-    </button>`,
-    )
+    </button>`)
     .join('');
 
   html += `<div class="tab-more-wrap">
     <button class="tab-more-btn ${moreActive ? 'has-active' : ''}" onclick="toggleTabMore(event)">···</button>
     <div class="tab-more-menu" id="tabMoreMenu">
-      ${moreTabs
-        .map(
-          (t) =>
-            `<button class="${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}');closeTabMore();">
+      ${moreTabs.map((t) => `<button class="${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}');closeTabMore();">
           ${t.label}<span class="tab-count" id="tabCount_${t.id}"></span>
-        </button>`,
-        )
-        .join('')}
+        </button>`).join('')}
     </div>
   </div>`;
 
@@ -321,9 +237,7 @@ async function switchTab(id) {
     setDayNowTimer(null);
   }
   if (id === 'day') setViewingDate(today());
-  document
-    .querySelectorAll('.tab-btn')
-    .forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-btn').forEach((b: any) => b.classList.toggle('active', b.dataset.tab === id));
   const qa = document.getElementById('quickAdd');
   if (qa) qa.style.display = id === 'events' || id === 'recurring' ? 'none' : '';
   renderCurrentTab();
@@ -332,46 +246,26 @@ async function switchTab(id) {
 async function updateTabCounts() {
   const focusCount = tasks.filter((t) => {
     if (t.status === 'done' || t.status === 'backlog') return false;
-    return (
-      isToday(t) ||
-      isOverdue(t) ||
-      isTomorrow(t) ||
-      t.status === 'waiting' ||
-      t.status === 'decide' ||
-      (!t.due_date && t.status === 'open')
-    );
+    return isToday(t) || isOverdue(t) || isTomorrow(t) || t.status === 'waiting' || t.status === 'decide' || (!t.due_date && t.status === 'open');
   }).length;
   const eventsData = getEventsData();
   const recurringData = await getRecurringData();
   const overdueRecurring = recurringData.filter((r) => getDaysUntilDue(r) <= 0).length;
   const counts = {
-    day:
-      tasks.filter(
-        (t) => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog',
-      ).length + getRecurringForDate(viewingDate).length,
+    day: tasks.filter((t) => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog').length + getRecurringForDate(viewingDate).length,
     focus: focusCount,
     all: tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog').length,
     streams: '',
-    week:
-      (() => {
-        const wk = [];
-        for (let i = 0; i < 7; i++) {
-          const d = new Date();
-          d.setDate(d.getDate() + i);
-          wk.push(localDateStr(d));
-        }
-        return tasks.filter(
-          (t) => t.status !== 'done' && t.status !== 'backlog' && wk.includes(t.due_date),
-        ).length;
-      })() || '',
+    week: (() => {
+      const wk = [];
+      for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() + i); wk.push(localDateStr(d)); }
+      return tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && wk.includes(t.due_date)).length;
+    })() || '',
     events: eventsData.filter((e) => e.date >= today()).length || '',
     recurring: overdueRecurring || '',
     done: (() => {
-      const a = new Date();
-      a.setDate(a.getDate() - 30);
-      return tasks.filter(
-        (t) => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= a,
-      ).length;
+      const a = new Date(); a.setDate(a.getDate() - 30);
+      return tasks.filter((t) => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= a).length;
     })(),
     dashboards: '',
   };
@@ -379,12 +273,7 @@ async function updateTabCounts() {
     const el = document.getElementById(`tabCount_${t.id}`);
     if (!el) return;
     if (t.id === 'all') {
-      const allFilterActive =
-        allFilters.search ||
-        allFilters.tags.length ||
-        allFilters.energy ||
-        allFilters.status ||
-        allFilters.noDate;
+      const allFilterActive = allFilters.search || allFilters.tags.length || allFilters.energy || allFilters.status || allFilters.noDate;
       el.textContent = allFilterActive ? counts[t.id] : '';
     } else {
       el.textContent = counts[t.id] !== '' && counts[t.id] > 0 ? counts[t.id] : '';
@@ -398,36 +287,16 @@ async function renderCurrentTab() {
   renderRibbon();
   const mc = document.getElementById('mainContent');
   switch (currentTab) {
-    case 'day':
-      renderDay(mc);
-      break;
-    case 'focus':
-      renderFocus(mc);
-      break;
-    case 'all':
-      renderAll(mc);
-      break;
-    case 'streams':
-      renderStreams(mc);
-      break;
-    case 'week':
-      renderWeekTab(mc);
-      break;
-    case 'events':
-      renderEvents(mc);
-      break;
-    case 'recurring':
-      renderRecurring(mc);
-      break;
-    case 'done':
-      renderDone(mc);
-      break;
-    case 'history':
-      renderHistory(mc);
-      break;
-    case 'dashboards':
-      renderDashboards(mc);
-      break;
+    case 'day': renderDay(mc); break;
+    case 'focus': renderFocus(mc); break;
+    case 'all': renderAll(mc); break;
+    case 'streams': renderStreams(mc); break;
+    case 'week': renderWeekTab(mc); break;
+    case 'events': renderEvents(mc); break;
+    case 'recurring': renderRecurring(mc); break;
+    case 'done': renderDone(mc); break;
+    case 'history': renderHistory(mc); break;
+    case 'dashboards': renderDashboards(mc); break;
   }
 }
 
@@ -440,34 +309,16 @@ function renderDashboards(mc) {
   });
   html += `</div>`;
   html += buildSearchBar('globalSearch', 'Search dashboards...');
-
   switch (currentDashboard) {
-    case 'triage':
-      html += buildTriageInbox();
-      break;
-    case 'overload':
-      html += buildOverloadDetector();
-      break;
-    case 'weekly':
-      html += buildWeeklyPlanning();
-      break;
-    case 'energy':
-      html += buildEnergyBudget();
-      break;
-    case 'waiting':
-      html += buildWaitingTracker();
-      break;
-    case 'health':
-      html += buildStreamHealth();
-      break;
-    case 'backlog':
-      html += buildBacklogReview();
-      break;
-    case 'review':
-      html += buildDailyReview();
-      break;
+    case 'triage': html += buildTriageInbox(); break;
+    case 'overload': html += buildOverloadDetector(); break;
+    case 'weekly': html += buildWeeklyPlanning(); break;
+    case 'energy': html += buildEnergyBudget(); break;
+    case 'waiting': html += buildWaitingTracker(); break;
+    case 'health': html += buildStreamHealth(); break;
+    case 'backlog': html += buildBacklogReview(); break;
+    case 'review': html += buildDailyReview(); break;
   }
-
   mc.innerHTML = html;
   wireSearchInput(mc, 'globalSearch');
 }
@@ -477,77 +328,31 @@ function switchDashboard(id) {
   renderCurrentTab();
 }
 
-
 // ─── Global Keyboard Shortcuts ───
 document.addEventListener('keydown', function (e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
     e.preventDefault();
-    const searchInput = document.querySelector('.search-input');
-    if (searchInput) {
-      searchInput.focus();
-      searchInput.select();
-    }
+    const searchInput = document.querySelector('.search-input') as HTMLInputElement;
+    if (searchInput) { searchInput.focus(); searchInput.select(); }
   }
 });
 
 // ─── Expose functions to HTML onclick handlers ───
 Object.assign(window, {
-  doLogin,
-  doLogout,
-  toggleLowCapacity,
-  refreshData,
-  pickQAEnergy,
-  quickAddTask,
-  setQADate,
-  handleQADatePicker,
-  pickModalEnergy,
-  addSubtask,
-  saveTask,
-  confirmCompleteTask,
-  closeModal,
-  confirmDeleteTask,
-  closeConfirm,
-  saveNewBlock,
-  closeBlockModal,
-  activateTask,
-  addCounter,
-  addEvent,
-  addRecurring,
-  addRecurringEvent,
-  deleteRecurring,
-  deleteRecurringEvent,
-  editCounter,
-  filterFloaters,
-  jumpToDay,
-  jumpToToday,
-  markRecurringDone,
-  navigateDay,
-  openAddNoteModal,
-  openBlockModal,
-  openEditModal,
-  pickEnergyDash,
-  ribbonStatClick,
-  saveHistoryNote,
-  switchDashboard,
-  switchTab,
-  toastUndo,
-  toggleCardExpand,
-  toggleChildDone,
-  toggleFilter,
-  toggleModalTag,
-  toggleStream,
-  toggleTabMore,
-  toggleWeekRow,
-  updateSubtaskDate,
-  deleteSubtask,
-  saveRecurringEventsData,
-  deleteEvent,
-  renderWaiting,
-  renderFloating,
-  renderLow,
-  renderBacklog,
-  buildTagIntelligence,
-  addRecurringEvent,
+  doLogin, doLogout, toggleLowCapacity, refreshData,
+  pickQAEnergy, quickAddTask, setQADate, handleQADatePicker,
+  pickModalEnergy, addSubtask, saveTask, confirmCompleteTask,
+  closeModal, confirmDeleteTask, closeConfirm, saveNewBlock, closeBlockModal,
+  activateTask, addCounter, addEvent, addRecurring, addRecurringEvent,
+  deleteRecurring, deleteRecurringEvent, editCounter, filterFloaters,
+  jumpToDay, jumpToToday, markRecurringDone, navigateDay,
+  openAddNoteModal, openBlockModal, openEditModal, pickEnergyDash,
+  ribbonStatClick, saveHistoryNote, switchDashboard, switchTab,
+  toastUndo, toggleCardExpand, toggleChildDone, toggleDone, toggleFilter,
+  toggleModalTag, toggleStream, toggleTabMore, toggleWeekRow,
+  updateSubtaskDate, deleteSubtask, saveRecurringEventsData, deleteEvent,
+  renderWaiting, renderFloating, renderLow, renderBacklog,
+  buildTagIntelligence, renderEditSubtasks, renderCurrentTab,
 });
 
 // ─── Init ───
