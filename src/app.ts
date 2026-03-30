@@ -16,6 +16,26 @@ import * as State from './state';
 import { TABS, DASHBOARD_VIEWS, RECURRING, hasHebrew } from './state';
 import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
 import { esc, emptyState, showToast, toastUndo } from './ui';
+import {
+  getEventsData,
+  saveEventsData,
+  getRecurringEventsData,
+  saveRecurringEventsData,
+  loadRecurringEventsFromSupabase,
+  addRecurringEventToSupabase,
+  deleteRecurringEventFromSupabase,
+  getEventsForDate,
+  getRecurringData,
+  saveRecurringItem,
+  deleteRecurringItem,
+  getRecurringOccurrences,
+  getDaysUntilDue,
+  getCountersData,
+  saveCounter,
+  deleteCounterById,
+  isDoneForDate,
+  clearRecurringEventsCache,
+} from './events-data';
 
 // ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
 let tasks = State.tasks;
@@ -3311,23 +3331,7 @@ document.getElementById('blockTitle').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') saveNewBlock();
 });
 
-// ─── Counters (localStorage) — conveyor belt items like אבחונים, דוחות ───
-let _countersCache = null;
-async function getCountersData() {
-  if (_countersCache) return _countersCache;
-  const { data, error } = await sb.from('counters').select('*').order('created_at');
-  _countersCache = error ? [] : data;
-  return _countersCache;
-}
-async function saveCounter(counter) {
-  const { error } = await sb.from('counters').upsert(counter);
-  if (error) console.error('Save counter error:', error);
-  _countersCache = null;
-}
-async function deleteCounter(id) {
-  await sb.from('counters').delete().eq('id', id);
-  _countersCache = null;
-}
+// Counters data functions → imported from ./events-data
 
 async function renderCountersBar() {
   const bar = document.getElementById('countersBar');
@@ -3367,7 +3371,7 @@ async function editCounter(id) {
   );
   if (choice === null) return;
   if (choice.toLowerCase() === 'delete') {
-    await deleteCounter(id);
+    await deleteCounterById(id);
     showToast('Counter removed');
   } else if (choice.toLowerCase() === 'rename') {
     const newName = prompt('New name:', c.label);
@@ -3386,89 +3390,7 @@ async function editCounter(id) {
   renderCountersBar();
 }
 
-// ─── Events (localStorage, cached) ───
-let _eventsCache = null;
-let _recurringEventsCache = null;
-let _recurringCache = null;
-function getEventsData() {
-  if (_eventsCache) return _eventsCache;
-  try {
-    _eventsCache = JSON.parse(localStorage.getItem('allison_events') || '[]');
-  } catch (e) {
-    _eventsCache = [];
-  }
-  return _eventsCache;
-}
-function saveEventsData(arr) {
-  _eventsCache = arr;
-  localStorage.setItem('allison_events', JSON.stringify(arr));
-}
-
-function getRecurringEventsData() {
-  if (_recurringEventsCache) return _recurringEventsCache;
-  // Fallback to localStorage until Supabase loads
-  try {
-    _recurringEventsCache = JSON.parse(localStorage.getItem('allison_recurring_events') || '[]');
-  } catch (e) {
-    _recurringEventsCache = [];
-  }
-  return _recurringEventsCache;
-}
-function saveRecurringEventsData(arr) {
-  _recurringEventsCache = arr;
-  localStorage.setItem('allison_recurring_events', JSON.stringify(arr));
-}
-
-async function loadRecurringEventsFromSupabase() {
-  try {
-    const { data, error } = await sb.from('recurring_events').select('*').order('day_of_week');
-    if (error) {
-      console.error('Failed to load recurring events:', error);
-      return;
-    }
-    _recurringEventsCache = data;
-    localStorage.setItem('allison_recurring_events', JSON.stringify(data));
-  } catch (e) {
-    console.error('Recurring events fetch error:', e);
-  }
-}
-
-async function addRecurringEventToSupabase(re) {
-  try {
-    const { data, error } = await sb.from('recurring_events').insert(re).select();
-    if (error) {
-      console.error('Failed to add recurring event:', error);
-      return null;
-    }
-    return data[0];
-  } catch (e) {
-    console.error('Recurring event insert error:', e);
-    return null;
-  }
-}
-
-async function deleteRecurringEventFromSupabase(id) {
-  try {
-    await sb.from('recurring_events').delete().eq('id', id);
-  } catch (e) {
-    console.error('Recurring event delete error:', e);
-  }
-}
-
-function getEventsForDate(dateStr) {
-  const oneOff = getEventsData().filter((e) => e.date === dateStr && e.time);
-  // Add recurring events matching this day of week
-  const d = new Date(dateStr + 'T00:00:00');
-  const dow = d.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
-  const recurring = getRecurringEventsData()
-    .filter((re) => re.day_of_week === dow)
-    .map((re) => ({
-      ...re,
-      date: dateStr,
-      isRecurringEvent: true,
-    }));
-  return [...oneOff, ...recurring];
-}
+// Events data functions → imported from ./events-data
 
 function renderEvents(mc) {
   let events = getEventsData().sort((a, b) =>
@@ -3620,7 +3542,7 @@ async function addRecurringEvent() {
   };
   const saved = await addRecurringEventToSupabase(re);
   if (saved) {
-    _recurringEventsCache = null; // clear cache
+    clearRecurringEventsCache(); // clear cache
     await loadRecurringEventsFromSupabase();
     showToast('Recurring event added');
     renderCurrentTab();
@@ -3631,77 +3553,13 @@ async function addRecurringEvent() {
 
 async function deleteRecurringEvent(id) {
   await deleteRecurringEventFromSupabase(id);
-  _recurringEventsCache = null;
+  clearRecurringEventsCache();
   await loadRecurringEventsFromSupabase();
   showToast('Recurring event deleted');
   renderCurrentTab();
 }
 
-// ─── Recurring Tracker (Supabase) ───
-async function getRecurringData() {
-  if (_recurringCache) return _recurringCache;
-  const { data, error } = await sb.from('recurring_tasks').select('*').order('created_at');
-  _recurringCache = error ? [] : data;
-  return _recurringCache;
-}
-async function saveRecurringItem(item) {
-  const { error } = await sb.from('recurring_tasks').upsert(item);
-  if (error) console.error('Save recurring error:', error);
-  _recurringCache = null;
-}
-async function deleteRecurringItem(id) {
-  await sb.from('recurring_tasks').delete().eq('id', id);
-  _recurringCache = null;
-}
-
-function getRecurringOccurrences(r) {
-  // Returns array of { date, overdue } objects to display
-  const todayDate = new Date(today() + 'T00:00:00');
-  const type = r.type || 'rolling'; // default for legacy items
-  if (type === 'fixed') {
-    // Fixed: calculate occurrences from anchor_date forward by frequency_days
-    const anchor = new Date((r.anchor_date || r.created_at.slice(0, 10)) + 'T00:00:00');
-    const freq = r.frequency_days;
-    // Find the next occurrence on or after today
-    let next = new Date(anchor);
-    while (next < todayDate) next.setDate(next.getDate() + freq);
-    // Also find the previous one (might be overdue)
-    let prev = new Date(next);
-    prev.setDate(prev.getDate() - freq);
-    const results = [];
-    // If prev is overdue (past today and not done for that date)
-    if (prev >= anchor && prev < todayDate && !isDoneForDate(r, prev)) {
-      results.push({ date: new Date(prev), overdue: true });
-    }
-    // Always show next upcoming (unless already done for that date)
-    if (!isDoneForDate(r, next)) {
-      results.push({ date: new Date(next), overdue: false });
-    }
-    return results;
-  } else {
-    // Rolling: next = last_done + frequency_days. Only show current one.
-    const lastDone = r.last_done
-      ? new Date(r.last_done + 'T00:00:00')
-      : new Date(r.created_at.slice(0, 10) + 'T00:00:00');
-    const nextDue = new Date(lastDone);
-    nextDue.setDate(nextDue.getDate() + r.frequency_days);
-    return [{ date: nextDue, overdue: nextDue < todayDate }];
-  }
-}
-
-function isDoneForDate(r, date) {
-  // Check if this specific occurrence was completed
-  if (!r.done_dates) return false;
-  const dateStr = date.toISOString().slice(0, 10);
-  return r.done_dates.includes(dateStr);
-}
-
-function getDaysUntilDue(r) {
-  const occs = getRecurringOccurrences(r);
-  if (!occs.length) return 999;
-  const todayDate = new Date(today() + 'T00:00:00');
-  return Math.ceil((occs[0].date - todayDate) / 86400000);
-}
+// Recurring tracker functions → imported from ./events-data
 
 async function renderRecurring(mc) {
   let items = await getRecurringData();
