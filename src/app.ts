@@ -43,6 +43,7 @@ import {
   isDoneForDate,
   clearRecurringEventsCache,
 } from './events-data';
+import { renderTaskCard, toggleCardExpand } from './task-card';
 
 // ─��─ State (local aliases — will be replaced with direct State.x access over time) ───
 let tasks = State.tasks;
@@ -1521,101 +1522,6 @@ async function saveHistoryNote(historyId, btn) {
   historyLoaded = false;
   if (currentTab === 'history') renderHistory(document.getElementById('mainContent'));
   showToast('Note saved ✓');
-}
-
-// ─── Task Card Renderer ───
-function renderTaskCard(
-  t,
-  compact = false,
-  extraHTML = '',
-  showActivate = false,
-  isDoneCard = false,
-) {
-  const children = tasks.filter((c) => c.parent_id === t.id);
-  const doneChildren = children.filter((c) => c.status === 'done').length;
-  const hasChildren = children.length > 0;
-
-  let dueHTML = '';
-  if (t.due_date) {
-    let cls = '';
-    if (isOverdue(t) && t.status !== 'done') cls = 'overdue';
-    else if (isToday(t)) cls = 'today';
-    dueHTML = `<span class="task-due ${cls}">${formatDate(t.due_date)}${t.due_time ? ' ' + t.due_time : ''}</span>`;
-  }
-
-  const tagHTML = (t.tags || [])
-    .map((tag) => {
-      const def = tagDefs.find((d) => d.name === tag);
-      const bgColor = def?.color ? def.color + '18' : '';
-      const textColor = def?.color || '';
-      const style = bgColor ? `style="background:${bgColor};color:${textColor}"` : '';
-      return `<span class="tag-pill" ${style}>${getTagIcon(tag)} ${esc(tag)}</span>`;
-    })
-    .join('');
-
-  const checked = t.status === 'done' ? 'checked' : '';
-
-  let childrenHTML = '';
-  if (hasChildren && !compact) {
-    childrenHTML = `<div class="task-children">
-      <span class="child-progress">${doneChildren}/${children.length} done</span>
-      ${children
-        .map(
-          (c) => `
-        <div class="task-child">
-          <div class="task-child-check ${c.status === 'done' ? 'checked' : ''}"
-               onclick="event.stopPropagation();toggleChildDone('${c.id}','${c.status}')"></div>
-          <span class="task-child-title ${c.status === 'done' ? 'done' : ''}">${esc(c.title)}</span>
-        </div>
-      `,
-        )
-        .join('')}
-    </div>`;
-  }
-
-  const createdHTML =
-    t.created_at && !compact
-      ? `<span class="task-created">Added ${formatDate(t.created_at.slice(0, 10))}</span>`
-      : '';
-
-  const editedHTML =
-    t.updated_at && !compact && t.updated_at !== t.created_at
-      ? `<span class="task-edited">Edited ${timeAgo(t.updated_at)}</span>`
-      : '';
-
-  const notesPreview =
-    t.notes && !compact ? `<div class="task-notes-preview">${highlightSearch(t.notes)}</div>` : '';
-
-  const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
-  const isAging =
-    agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog';
-
-  return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" ${isAging ? 'title="Added ' + agingDays + ' days ago"' : ''}>
-    <div class="task-top">
-      <div class="task-check ${checked}" onclick="event.stopPropagation();toggleDone('${t.id}','${t.status}')"></div>
-      <div class="task-body" onclick="toggleCardExpand(event, '${t.id}')" ondblclick="event.stopPropagation();openEditModal('${t.id}')">
-        <div class="task-title-row">
-          ${t.energy ? `<span class="energy-dot ${t.energy}"></span>` : ''}
-          <span class="task-title"${hasHebrew(t.title) ? ' dir="rtl"' : ''}>${highlightSearch(t.title)}</span>
-          ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
-        </div>
-        <div class="task-meta">
-          ${dueHTML}${tagHTML}${createdHTML}${editedHTML}
-        </div>
-        ${notesPreview}
-        ${extraHTML}
-      </div>
-      ${showActivate ? '' : ''}
-    </div>
-    ${childrenHTML}
-  </div>`;
-}
-
-// ─── Toggle Card Expand ───
-function toggleCardExpand(event, id) {
-  event.stopPropagation();
-  const card = document.getElementById('card_' + id);
-  if (card) card.classList.toggle('expanded');
 }
 
 // ─── Toggle Done ───
