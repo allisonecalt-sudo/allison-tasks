@@ -9,12 +9,10 @@ function uid(label) {
 
 /** Clean up test tasks by searching for PREFIX in card text */
 async function cleanup(page) {
-  // Close any open modal first
-  const modal = page.locator('#editModal.visible');
-  if ((await modal.count()) > 0) {
-    await page.click('.modal-cancel');
-    await page.waitForTimeout(300);
-  }
+  // Close any open modals/dialogs first
+  await page.locator('#confirmDialog').evaluate((el) => el.classList.remove('visible'));
+  await page.locator('#editModal').evaluate((el) => el.classList.remove('visible'));
+  await page.waitForTimeout(200);
 
   // Make sure we're on All tab for cleanup
   await page.locator('#tabBar button[data-tab="all"]').click();
@@ -26,7 +24,8 @@ async function cleanup(page) {
     await cards.first().dblclick();
     await expect(page.locator('#editModal.visible')).toBeVisible({ timeout: 5000 });
     await page.click('.modal-delete');
-    await page.click('.confirm-yes');
+    // Use force:true — confirm dialog can be obscured by task cards on mobile viewport
+    await page.click('.confirm-yes', { force: true });
     await page.waitForTimeout(600);
     cards = page.locator('.task-card', { hasText: PREFIX });
     count = await cards.count();
