@@ -7,29 +7,38 @@ function uid(label) {
   return `${PREFIX}${label}_${Date.now()}`;
 }
 
-/** Clean up test tasks by searching for PREFIX in card text */
-async function cleanup(page) {
-  // Close any open modals/dialogs first
-  await page.locator('#confirmDialog').evaluate((el) => el.classList.remove('visible'));
-  await page.locator('#editModal').evaluate((el) => el.classList.remove('visible'));
-  await page.waitForTimeout(200);
+const SB_URL = 'https://hpiyvnfhoqnnnotrmwaz.supabase.co/rest/v1';
+const SB_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwaXl2bmZob3Fubm5vdHJtd2F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzIwNDEsImV4cCI6MjA4ODA0ODA0MX0.AsGhYitkSnyVMwpJII05UseS_gICaXiCy7d8iHsr6Qw';
+const sbHeaders = {
+  apikey: SB_KEY,
+  Authorization: `Bearer ${SB_KEY}`,
+  'Content-Type': 'application/json',
+  Prefer: 'return=minimal',
+};
 
-  // Make sure we're on All tab for cleanup
-  await page.locator('#tabBar button[data-tab="all"]').click();
-  await page.waitForTimeout(500);
+/** Clean up test tasks via Supabase REST API — no fragile UI clicks */
+async function cleanup() {
+  // Find all test tasks
+  const res = await fetch(`${SB_URL}/tasks?title=like.${PREFIX}*&select=id`, {
+    headers: sbHeaders,
+  });
+  const tasks = await res.json();
+  if (!tasks || tasks.length === 0) return;
 
-  let cards = page.locator('.task-card', { hasText: PREFIX });
-  let count = await cards.count();
-  while (count > 0) {
-    await cards.first().dblclick();
-    await expect(page.locator('#editModal.visible')).toBeVisible({ timeout: 5000 });
-    await page.click('.modal-delete');
-    // Use force:true — confirm dialog can be obscured by task cards on mobile viewport
-    await page.click('.confirm-yes', { force: true });
-    await page.waitForTimeout(600);
-    cards = page.locator('.task-card', { hasText: PREFIX });
-    count = await cards.count();
-  }
+  const ids = tasks.map((t) => t.id);
+
+  // Delete subtasks of these parents first
+  await fetch(`${SB_URL}/tasks?parent_id=in.(${ids.join(',')})`, {
+    method: 'DELETE',
+    headers: sbHeaders,
+  });
+
+  // Delete the parent test tasks
+  await fetch(`${SB_URL}/tasks?id=in.(${ids.join(',')})`, {
+    method: 'DELETE',
+    headers: sbHeaders,
+  });
 }
 
 test.describe('Parent / Child (Subtask) functionality', () => {
@@ -40,8 +49,8 @@ test.describe('Parent / Child (Subtask) functionality', () => {
     await page.waitForTimeout(500);
   });
 
-  test.afterEach(async ({ page }) => {
-    await cleanup(page);
+  test.afterEach(async () => {
+    await cleanup();
   });
 
   test('add subtasks to a parent task and see progress badge', async ({ page }) => {
