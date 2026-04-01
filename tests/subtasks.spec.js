@@ -16,6 +16,10 @@ async function cleanup(page) {
     await page.waitForTimeout(300);
   }
 
+  // Make sure we're on All tab for cleanup
+  await page.locator('#tabBar button[data-tab="all"]').click();
+  await page.waitForTimeout(500);
+
   let cards = page.locator('.task-card', { hasText: PREFIX });
   let count = await cards.count();
   while (count > 0) {
@@ -32,6 +36,9 @@ async function cleanup(page) {
 test.describe('Parent / Child (Subtask) functionality', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Switch to "All" tab so quick-added tasks (no date) are visible
+    await page.locator('#tabBar button[data-tab="all"]').click();
+    await page.waitForTimeout(500);
   });
 
   test.afterEach(async ({ page }) => {
