@@ -10,7 +10,13 @@ export function renderTaskCard(
   showActivate = false,
   isDoneCard = false,
 ) {
-  const children = tasks.filter((c) => c.parent_id === t.id);
+  const children = tasks
+    .filter((c) => c.parent_id === t.id)
+    .sort(
+      (a, b) =>
+        (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) ||
+        (a.created_at || '').localeCompare(b.created_at || ''),
+    );
   const doneChildren = children.filter((c) => c.status === 'done').length;
   const hasChildren = children.length > 0;
 
@@ -38,6 +44,7 @@ export function renderTaskCard(
   if (hasChildren && !compact) {
     childrenHTML = `<div class="task-children">
       <span class="child-progress">${doneChildren}/${children.length} done</span>
+      <div class="child-progress-bar" style="max-width:120px"><div class="fill" style="width:${Math.round((doneChildren / children.length) * 100)}%"></div></div>
       ${children
         .map(
           (c) => `
@@ -76,7 +83,7 @@ export function renderTaskCard(
         <div class="task-title-row">
           ${t.energy ? `<span class="energy-dot ${t.energy}"></span>` : ''}
           <span class="task-title"${hasHebrew(t.title) ? ' dir="rtl"' : ''}>${highlightSearch(t.title)}</span>
-          ${hasChildren ? `<span class="child-progress">${doneChildren}/${children.length}</span>` : ''}
+          ${hasChildren ? `<span class="child-progress-wrap"><span class="child-progress">${doneChildren}/${children.length}</span><div class="child-progress-bar"><div class="fill" style="width:${Math.round((doneChildren / children.length) * 100)}%"></div></div></span>` : ''}
         </div>
         <div class="task-meta">
           ${dueHTML}${tagHTML}${createdHTML}${editedHTML}

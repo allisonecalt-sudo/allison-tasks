@@ -46,6 +46,19 @@ export function openEditModal(id) {
   // Tags
   renderModalTags(t.tags || []);
 
+  // Parent picker
+  const parentSelect = document.getElementById('editParentId') as HTMLSelectElement;
+  const childIds = tasks.filter((c) => c.parent_id === id).map((c) => c.id);
+  parentSelect.innerHTML =
+    '<option value="">None (standalone task)</option>' +
+    tasks
+      .filter((x) => x.id !== id && !childIds.includes(x.id) && x.status !== 'done')
+      .map(
+        (x) =>
+          `<option value="${x.id}" ${x.id === t.parent_id ? 'selected' : ''}>${esc(x.title)}</option>`,
+      )
+      .join('');
+
   // Subtasks
   renderEditSubtasks(id);
 
@@ -61,28 +74,70 @@ function toggleWaitingSection() {
 
 export function renderEditSubtasks(parentId) {
   const container = document.getElementById('editSubtasks');
-  const children = tasks.filter((c) => c.parent_id === parentId);
+  const children = tasks
+    .filter((c) => c.parent_id === parentId)
+    .sort(
+      (a, b) =>
+        (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) ||
+        (a.created_at || '').localeCompare(b.created_at || ''),
+    );
   if (children.length === 0) {
     container.innerHTML =
       '<div style="font-size:.78rem;color:var(--dim);padding:.2rem 0">No subtasks yet</div>';
     return;
   }
   container.innerHTML = children
-    .map((c) => {
-      const duePart = c.due_date
-        ? `<span style="font-size:.7rem;color:${c.due_date < today() && c.status !== 'done' ? '#c0392b' : 'var(--dim)'};white-space:nowrap">${formatDate(c.due_date)}</span>`
-        : '';
+    .map((c, idx) => {
+      const checked = c.status === 'done' ? 'checked' : '';
+      const doneClass = c.status === 'done' ? 'done' : '';
+      const isOverdueDate = c.due_date && c.due_date < today() && c.status !== 'done';
+      const overdueClass = isOverdueDate ? 'overdue' : '';
+      const dateLabel = c.due_date ? formatDate(c.due_date) : 'No date';
+      const isFirst = idx === 0;
+      const isLast = idx === children.length - 1;
       return `
-    <div style="display:flex;align-items:center;gap:.4rem;padding:.3rem 0;border-bottom:1px solid var(--surface2)">
-      <div class="task-child-check ${c.status === 'done' ? 'checked' : ''}"
+    <div class="subtask-row">
+      <div class="task-child-check ${checked}"
            onclick="event.stopPropagation();toggleChildDone('${c.id}','${c.status}');setTimeout(()=>renderEditSubtasks('${parentId}'),300)"></div>
-      <span style="flex:1;font-size:.82rem;${c.status === 'done' ? 'text-decoration:line-through;color:var(--dim)' : ''}">${esc(c.title)}</span>
-      ${duePart}
-      <input type="date" value="${c.due_date || ''}" style="font-size:.7rem;width:auto;padding:0 .2rem;border:1px solid var(--border);border-radius:4px;background:var(--surface)" onchange="updateSubtaskDate('${c.id}','${parentId}',this.value)">
-      <button onclick="event.stopPropagation();deleteSubtask('${c.id}','${parentId}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:.75rem;padding:.2rem" title="Remove">✕</button>
+      <span class="subtask-title ${doneClass}">${esc(c.title)}</span>
+      <span class="subtask-date ${overdueClass}" onclick="this.nextElementSibling.showPicker?.()" title="Click to set date">${dateLabel}</span>
+      <input type="date" class="subtask-date-input" value="${c.due_date || ''}" onchange="updateSubtaskDate('${c.id}','${parentId}',this.value)">
+      <button class="subtask-move" onclick="reorderSubtask('${c.id}','${parentId}','up')" title="Move up" ${isFirst ? 'disabled' : ''}>&#x2191;</button>
+      <button class="subtask-move" onclick="reorderSubtask('${c.id}','${parentId}','down')" title="Move down" ${isLast ? 'disabled' : ''}>&#x2193;</button>
+      <button class="subtask-delete" onclick="event.stopPropagation();deleteSubtask('${c.id}','${parentId}')" title="Remove">&#x2715;</button>
     </div>`;
     })
     .join('');
+}
+
+export async function reorderSubtask(id, parentId, direction) {
+  const children = tasks
+    .filter((c) => c.parent_id === parentId)
+    .sort(
+      (a, b) =>
+        (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) ||
+        (a.created_at || '').localeCompare(b.created_at || ''),
+    );
+  const idx = children.findIndex((c) => c.id === id);
+  if (idx < 0) return;
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= children.length) return;
+
+  const a = children[idx];
+  const b = children[swapIdx];
+  const aOrder = a.sort_order ?? idx;
+  const bOrder = b.sort_order ?? swapIdx;
+
+  a.sort_order = bOrder;
+  b.sort_order = aOrder;
+
+  await Promise.all([
+    sb.from('tasks').update({ sort_order: a.sort_order }).eq('id', a.id),
+    sb.from('tasks').update({ sort_order: b.sort_order }).eq('id', b.id),
+  ]);
+
+  renderEditSubtasks(parentId);
+  _renderCurrentTab();
 }
 
 export async function updateSubtaskDate(id, parentId, dateVal) {
@@ -208,6 +263,7 @@ export async function saveTask() {
 
   const activeEnergy = document.querySelector('.modal-energy-btn.active') as HTMLElement;
   const energy = activeEnergy ? activeEnergy.dataset.e : null;
+  const parentId = (document.getElementById('editParentId') as HTMLSelectElement).value || null;
 
   const selectedTags = Array.from(document.querySelectorAll('.modal-tag.active')).map(
     (b: any) => b.dataset.tag,
@@ -228,6 +284,7 @@ export async function saveTask() {
     waiting_on: waitingOn,
     waiting_followup: waitingFollowup,
     tags: selectedTags,
+    parent_id: parentId,
     updated_at: now,
   };
 
@@ -289,12 +346,33 @@ export async function saveTask() {
 }
 
 export function confirmCompleteTask() {
-  document.getElementById('confirmText').textContent = 'Mark this task as done?';
+  const children = tasks.filter((c) => c.parent_id === editingTaskId);
+  const openChildren = children.filter((c) => c.status !== 'done');
+
+  if (openChildren.length > 0) {
+    document.getElementById('confirmText').textContent =
+      `This task has ${openChildren.length} open subtask${openChildren.length > 1 ? 's' : ''}. Complete all?`;
+  } else {
+    document.getElementById('confirmText').textContent = 'Mark this task as done?';
+  }
+
   document.getElementById('confirmDialog').classList.add('visible');
   document.getElementById('confirmYes').onclick = async () => {
     closeConfirm();
     if (!editingTaskId) return;
     const now = new Date().toISOString();
+
+    // Complete all open children too
+    for (const child of openChildren) {
+      await sb
+        .from('tasks')
+        .update({ status: 'done', completed_at: now, updated_at: now })
+        .eq('id', child.id);
+      child.status = 'done';
+      child.completed_at = now;
+      child.updated_at = now;
+    }
+
     await sb
       .from('tasks')
       .update({ status: 'done', completed_at: now, updated_at: now })

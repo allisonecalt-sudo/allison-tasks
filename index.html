@@ -1,215 +1,323 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" dir="ltr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tasks — Allison</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-<!-- Auth -->
-<div class="auth-screen" id="authScreen">
-  <div class="auth-card">
-    <h1>Tasks</h1>
-    <p>Sign in to manage your tasks</p>
-    <input type="email" class="auth-input" id="authEmail" placeholder="Email" autocomplete="email">
-    <input type="password" class="auth-input" id="authPass" placeholder="Password" autocomplete="current-password">
-    <button class="auth-btn" id="authBtn" onclick="doLogin()">Sign In</button>
-    <div class="auth-error" id="authError"></div>
-  </div>
-</div>
-
-<!-- App -->
-<div class="app" id="app">
-
-  <!-- Header -->
-  <div class="hdr">
-    <div class="hdr-left">
-      <div class="hdr-greeting" id="hdrGreeting"></div>
-      <div class="hdr-date" id="hdrDate"></div>
-    </div>
-    <div class="hdr-actions">
-      <button class="hdr-btn" id="lowCapBtn" onclick="toggleLowCapacity()" title="Low capacity mode" style="font-size:1rem">&#x1F50B;</button>
-      <button class="hdr-btn" onclick="refreshData()" title="Refresh">&#x21bb;</button>
-      <button class="hdr-btn" onclick="doLogout()" title="Sign out">&#x23fb;</button>
-    </div>
-  </div>
-
-  <!-- Ribbon -->
-  <div class="ribbon" id="ribbon">
-    <div class="ribbon-summary" id="ribbonSummary" onclick="var r=document.getElementById('ribbon');r.classList.remove('collapsed');r.dataset.userExpanded='1'"></div>
-    <div class="ribbon-grid" id="ribbonGrid" onclick="if(window.innerWidth<=600){var r=document.getElementById('ribbon');r.classList.add('collapsed');delete r.dataset.userExpanded;}"></div>
-  </div>
-
-  <!-- Counters Bar -->
-  <div class="counters-bar" id="countersBar"></div>
-
-  <!-- Tab Bar -->
-  <div class="tab-bar" id="tabBar"></div>
-
-  <!-- Main Content -->
-  <div class="main-content" id="mainContent">
-    <div class="loading"><div class="spinner"></div>Loading tasks...</div>
-  </div>
-
-  <!-- Quick Add -->
-  <div class="quick-add" id="quickAdd">
-    <div class="quick-add-row1">
-      <input type="text" class="quick-add-input" id="qaInput" placeholder="Add a task...">
-      <div class="energy-picker">
-        <button class="energy-pick" data-e="low" onclick="pickQAEnergy(this)" title="Low energy"></button>
-        <button class="energy-pick" data-e="medium" onclick="pickQAEnergy(this)" title="Medium energy"></button>
-        <button class="energy-pick" data-e="high" onclick="pickQAEnergy(this)" title="High energy"></button>
-      </div>
-      <button class="quick-add-btn" id="qaBtn" onclick="quickAddTask()" title="Add task">+</button>
-    </div>
-    <div class="quick-add-dates">
-      <button class="qa-date-btn" id="qaBtnToday" onclick="setQADate('today')">Today</button>
-      <button class="qa-date-btn" id="qaBtnTomorrow" onclick="setQADate('tomorrow')">Tomorrow</button>
-      <div class="qa-date-pick-wrap">
-        <input type="date" id="qaDate" onchange="handleQADatePicker()" title="Pick a date">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tasks — Allison</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Auth -->
+    <div class="auth-screen" id="authScreen">
+      <div class="auth-card">
+        <h1>Tasks</h1>
+        <p>Sign in to manage your tasks</p>
+        <input
+          type="email"
+          class="auth-input"
+          id="authEmail"
+          placeholder="Email"
+          autocomplete="email"
+        />
+        <input
+          type="password"
+          class="auth-input"
+          id="authPass"
+          placeholder="Password"
+          autocomplete="current-password"
+        />
+        <button class="auth-btn" id="authBtn" onclick="doLogin()">Sign In</button>
+        <div class="auth-error" id="authError"></div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Edit Modal -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Edit Task</div>
-
-    <div class="modal-field">
-      <div class="modal-label">Title</div>
-      <input type="text" class="modal-input" id="editTitle">
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Notes</div>
-      <textarea class="modal-textarea" id="editNotes"></textarea>
-    </div>
-
-    <div class="modal-row">
-      <div class="modal-field">
-        <div class="modal-label">Status</div>
-        <select class="modal-select" id="editStatus">
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="waiting">Waiting</option>
-          <option value="decide">Decide</option>
-          <option value="maybe">Maybe</option>
-          <option value="done">Done</option>
-          <option value="backlog">Backlog</option>
-        </select>
+    <!-- App -->
+    <div class="app" id="app">
+      <!-- Header -->
+      <div class="hdr">
+        <div class="hdr-left">
+          <div class="hdr-greeting" id="hdrGreeting"></div>
+          <div class="hdr-date" id="hdrDate"></div>
+        </div>
+        <div class="hdr-actions">
+          <button
+            class="hdr-btn"
+            id="lowCapBtn"
+            onclick="toggleLowCapacity()"
+            title="Low capacity mode"
+            style="font-size: 1rem"
+          >
+            &#x1F50B;
+          </button>
+          <button class="hdr-btn" onclick="refreshData()" title="Refresh">&#x21bb;</button>
+          <button class="hdr-btn" onclick="doLogout()" title="Sign out">&#x23fb;</button>
+        </div>
       </div>
-      <div class="modal-field">
-        <div class="modal-label">Energy</div>
-        <div class="modal-energy-row" id="editEnergyRow">
-          <button class="modal-energy-btn" data-e="low" onclick="pickModalEnergy(this)">
-            <span class="energy-dot low"></span> Low
+
+      <!-- Ribbon -->
+      <div class="ribbon" id="ribbon">
+        <div
+          class="ribbon-summary"
+          id="ribbonSummary"
+          onclick="
+            var r = document.getElementById('ribbon');
+            r.classList.remove('collapsed');
+            r.dataset.userExpanded = '1';
+          "
+        ></div>
+        <div
+          class="ribbon-grid"
+          id="ribbonGrid"
+          onclick="
+            if (window.innerWidth <= 600) {
+              var r = document.getElementById('ribbon');
+              r.classList.add('collapsed');
+              delete r.dataset.userExpanded;
+            }
+          "
+        ></div>
+      </div>
+
+      <!-- Counters Bar -->
+      <div class="counters-bar" id="countersBar"></div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" id="tabBar"></div>
+
+      <!-- Main Content -->
+      <div class="main-content" id="mainContent">
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading tasks...
+        </div>
+      </div>
+
+      <!-- Quick Add -->
+      <div class="quick-add" id="quickAdd">
+        <div class="quick-add-row1">
+          <input type="text" class="quick-add-input" id="qaInput" placeholder="Add a task..." />
+          <div class="energy-picker">
+            <button
+              class="energy-pick"
+              data-e="low"
+              onclick="pickQAEnergy(this)"
+              title="Low energy"
+            ></button>
+            <button
+              class="energy-pick"
+              data-e="medium"
+              onclick="pickQAEnergy(this)"
+              title="Medium energy"
+            ></button>
+            <button
+              class="energy-pick"
+              data-e="high"
+              onclick="pickQAEnergy(this)"
+              title="High energy"
+            ></button>
+          </div>
+          <button class="quick-add-btn" id="qaBtn" onclick="quickAddTask()" title="Add task">
+            +
           </button>
-          <button class="modal-energy-btn" data-e="medium" onclick="pickModalEnergy(this)">
-            <span class="energy-dot medium"></span> Med
+        </div>
+        <div class="quick-add-dates">
+          <button class="qa-date-btn" id="qaBtnToday" onclick="setQADate('today')">Today</button>
+          <button class="qa-date-btn" id="qaBtnTomorrow" onclick="setQADate('tomorrow')">
+            Tomorrow
           </button>
-          <button class="modal-energy-btn" data-e="high" onclick="pickModalEnergy(this)">
-            <span class="energy-dot high"></span> High
-          </button>
+          <div class="qa-date-pick-wrap">
+            <input type="date" id="qaDate" onchange="handleQADatePicker()" title="Pick a date" />
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="modal-row">
-      <div class="modal-field">
-        <div class="modal-label">Due Date</div>
-        <input type="date" class="modal-input" id="editDueDate">
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Edit Task</div>
+
+        <div class="modal-field">
+          <div class="modal-label">Title</div>
+          <input type="text" class="modal-input" id="editTitle" />
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-label">Notes</div>
+          <textarea class="modal-textarea" id="editNotes"></textarea>
+        </div>
+
+        <div class="modal-row">
+          <div class="modal-field">
+            <div class="modal-label">Status</div>
+            <select class="modal-select" id="editStatus">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="waiting">Waiting</option>
+              <option value="decide">Decide</option>
+              <option value="maybe">Maybe</option>
+              <option value="done">Done</option>
+              <option value="backlog">Backlog</option>
+            </select>
+          </div>
+          <div class="modal-field">
+            <div class="modal-label">Energy</div>
+            <div class="modal-energy-row" id="editEnergyRow">
+              <button class="modal-energy-btn" data-e="low" onclick="pickModalEnergy(this)">
+                <span class="energy-dot low"></span> Low
+              </button>
+              <button class="modal-energy-btn" data-e="medium" onclick="pickModalEnergy(this)">
+                <span class="energy-dot medium"></span> Med
+              </button>
+              <button class="modal-energy-btn" data-e="high" onclick="pickModalEnergy(this)">
+                <span class="energy-dot high"></span> High
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-row">
+          <div class="modal-field">
+            <div class="modal-label">Due Date</div>
+            <input type="date" class="modal-input" id="editDueDate" />
+          </div>
+          <div class="modal-field">
+            <div class="modal-label">Due Time</div>
+            <input
+              type="text"
+              class="modal-input"
+              id="editDueTime"
+              placeholder="10:00 or 10:00-11:00"
+              dir="ltr"
+              style="text-align: left"
+            />
+          </div>
+        </div>
+
+        <div class="modal-field" id="editWaitingSection" style="display: none">
+          <div class="modal-label">Waiting On</div>
+          <input
+            type="text"
+            class="modal-input"
+            id="editWaitingOn"
+            placeholder="Who are you waiting for?"
+          />
+          <div style="margin-top: 0.5rem">
+            <div class="modal-label">Follow-up Date</div>
+            <input type="date" class="modal-input" id="editWaitingFollowup" />
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-label">Subtasks</div>
+          <div id="editSubtasks"></div>
+          <div style="display: flex; gap: 0.4rem; margin-top: 0.4rem; align-items: center">
+            <input
+              type="text"
+              class="modal-input"
+              id="newSubtaskInput"
+              placeholder="Add a subtask..."
+              style="margin-bottom: 0; flex: 1"
+              onkeydown="
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addSubtask();
+                }
+              "
+            />
+            <input
+              type="date"
+              id="newSubtaskDate"
+              style="
+                font-size: 0.78rem;
+                padding: 0.3rem;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                background: var(--surface);
+              "
+            />
+            <button
+              class="modal-save"
+              style="padding: 0.4rem 0.7rem; font-size: 0.78rem; white-space: nowrap"
+              onclick="addSubtask()"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-label">Tags</div>
+          <div class="modal-tags" id="editTagsWrap"></div>
+        </div>
+
+        <div class="modal-field" id="editParentSection">
+          <div class="modal-label">Parent Task</div>
+          <select class="modal-select" id="editParentId">
+            <option value="">None (standalone task)</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button class="modal-save" onclick="saveTask()">Save</button>
+          <button class="modal-complete" onclick="confirmCompleteTask()">&#x2713; Complete</button>
+          <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+          <button class="modal-delete" onclick="confirmDeleteTask()">&#x1F5D1;</button>
+        </div>
       </div>
-      <div class="modal-field">
-        <div class="modal-label">Due Time</div>
-        <input type="text" class="modal-input" id="editDueTime" placeholder="10:00 or 10:00-11:00" dir="ltr" style="text-align:left">
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-dialog" id="confirmDialog">
+      <div class="confirm-box">
+        <div class="confirm-text" id="confirmText"></div>
+        <div class="confirm-actions">
+          <button class="confirm-yes" id="confirmYes">Yes</button>
+          <button class="confirm-no" onclick="closeConfirm()">Cancel</button>
+        </div>
       </div>
     </div>
 
-    <div class="modal-field" id="editWaitingSection" style="display:none">
-      <div class="modal-label">Waiting On</div>
-      <input type="text" class="modal-input" id="editWaitingOn" placeholder="Who are you waiting for?">
-      <div style="margin-top:.5rem">
-        <div class="modal-label">Follow-up Date</div>
-        <input type="date" class="modal-input" id="editWaitingFollowup">
+    <!-- Add Block Modal -->
+    <div class="add-block-modal" id="addBlockModal">
+      <div class="add-block-form">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Time Block</div>
+
+        <div class="modal-field">
+          <div class="modal-label">Title</div>
+          <input type="text" class="modal-input" id="blockTitle" placeholder="What's happening?" />
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-label">Date</div>
+          <input type="date" class="modal-input" id="blockDate" />
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-label">Time</div>
+          <div class="add-block-time-row">
+            <input type="time" id="blockStartTime" value="09:00" />
+            <span class="add-block-time-sep">to</span>
+            <input type="time" id="blockEndTime" value="10:00" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="modal-save" id="blockSaveBtn" onclick="saveNewBlock()">Add Block</button>
+          <button class="modal-cancel" onclick="closeBlockModal()">Cancel</button>
+        </div>
       </div>
     </div>
 
-    <div class="modal-field">
-      <div class="modal-label">Subtasks</div>
-      <div id="editSubtasks"></div>
-      <div style="display:flex;gap:.4rem;margin-top:.4rem;align-items:center">
-        <input type="text" class="modal-input" id="newSubtaskInput" placeholder="Add a subtask..." style="margin-bottom:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask()}">
-        <input type="date" id="newSubtaskDate" style="font-size:.78rem;padding:.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
-        <button class="modal-save" style="padding:.4rem .7rem;font-size:.78rem;white-space:nowrap" onclick="addSubtask()">+ Add</button>
-      </div>
-    </div>
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
 
-    <div class="modal-field">
-      <div class="modal-label">Tags</div>
-      <div class="modal-tags" id="editTagsWrap"></div>
-    </div>
-
-    <div class="modal-actions">
-      <button class="modal-save" onclick="saveTask()">Save</button>
-      <button class="modal-complete" onclick="confirmCompleteTask()">&#x2713; Complete</button>
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
-      <button class="modal-delete" onclick="confirmDeleteTask()">&#x1F5D1;</button>
-    </div>
-  </div>
-</div>
-
-<!-- Confirm Dialog -->
-<div class="confirm-dialog" id="confirmDialog">
-  <div class="confirm-box">
-    <div class="confirm-text" id="confirmText"></div>
-    <div class="confirm-actions">
-      <button class="confirm-yes" id="confirmYes">Yes</button>
-      <button class="confirm-no" onclick="closeConfirm()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add Block Modal -->
-<div class="add-block-modal" id="addBlockModal">
-  <div class="add-block-form">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Add Time Block</div>
-
-    <div class="modal-field">
-      <div class="modal-label">Title</div>
-      <input type="text" class="modal-input" id="blockTitle" placeholder="What's happening?">
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Date</div>
-      <input type="date" class="modal-input" id="blockDate">
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Time</div>
-      <div class="add-block-time-row">
-        <input type="time" id="blockStartTime" value="09:00">
-        <span class="add-block-time-sep">to</span>
-        <input type="time" id="blockEndTime" value="10:00">
-      </div>
-    </div>
-
-    <div class="modal-actions">
-      <button class="modal-save" id="blockSaveBtn" onclick="saveNewBlock()">Add Block</button>
-      <button class="modal-cancel" onclick="closeBlockModal()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<script type="module" src="/src/app.ts"></script>
-</body>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
 </html>

@@ -618,10 +618,79 @@ textarea {
   color: var(--dim);
 }
 .child-progress {
-  font-size: 0.68rem;
-  color: var(--dim);
-  font-weight: 500;
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 600;
   margin-inline-start: auto;
+}
+.child-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.15rem;
+}
+.child-progress-bar .fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.subtask-title {
+  flex: 1;
+  font-size: 0.82rem;
+}
+.subtask-title.done {
+  text-decoration: line-through;
+  color: var(--dim);
+}
+.subtask-date {
+  font-size: 0.7rem;
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.subtask-date.overdue {
+  color: #c0392b;
+}
+.subtask-date-input {
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  position: absolute;
+}
+.subtask-delete {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem;
+}
+.subtask-move {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+  line-height: 1;
+}
+.subtask-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.subtask-move:hover:not(:disabled) {
+  color: var(--accent);
 }
 .task-age {
   font-size: 0.68rem;

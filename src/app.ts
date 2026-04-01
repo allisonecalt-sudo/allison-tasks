@@ -61,6 +61,7 @@ import {
   deleteSubtask,
   updateSubtaskDate,
   renderEditSubtasks,
+  reorderSubtask,
   openBlockModal,
   closeBlockModal,
   saveNewBlock,
@@ -573,6 +574,7 @@ Object.assign(window, {
   renderLow,
   renderBacklog,
   buildTagIntelligence,
+  reorderSubtask,
   renderEditSubtasks,
   renderCurrentTab,
 });
