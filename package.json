@@ -9,7 +9,8 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --check src/ styles.css",
     "format:fix": "prettier --write src/ styles.css",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npx playwright test --reporter=list"
   },
   "dependencies": {
     "@playwright/test": "^1.58.2",
