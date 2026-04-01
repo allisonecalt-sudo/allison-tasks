@@ -108,10 +108,11 @@ test.describe('Parent / Child (Subtask) functionality', () => {
 
     // Toggle the subtask done
     await page.locator('#editSubtasks .task-child-check').first().click();
-    await page.waitForTimeout(600);
 
-    // Should show checked
-    await expect(page.locator('#editSubtasks .task-child-check.checked')).toHaveCount(1);
+    // Should show checked — wait for async toggle + re-render
+    await expect(page.locator('#editSubtasks .task-child-check.checked')).toHaveCount(1, {
+      timeout: 5000,
+    });
 
     await page.click('.modal-save');
     await page.waitForTimeout(600);
@@ -203,7 +204,9 @@ test.describe('Parent / Child (Subtask) functionality', () => {
     await page.waitForTimeout(600);
 
     await page.click('.modal-save');
-    await page.waitForTimeout(600);
+    // Wait for modal to fully close before interacting with cards
+    await expect(page.locator('#editModal.visible')).toBeHidden({ timeout: 5000 });
+    await page.waitForTimeout(300);
 
     // Single-click to expand the card
     const card = page.locator('.task-card', { hasText: title }).first();
