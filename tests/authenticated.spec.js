@@ -56,10 +56,41 @@ test.describe('Authenticated tests', () => {
     const errors = [];
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
 
-    const tabs = ['day', 'focus', 'all', 'streams', 'week', 'events', 'recurring', 'done'];
+    const tabs = ['day', 'focus', 'all', 'streams', 'week', 'events', 'recurring', 'sparks', 'done'];
     for (const tab of tabs) {
       await switchTab(page, tab);
     }
     expect(errors.filter(e => !e.includes('favicon'))).toEqual([]);
+  });
+
+  test('more menu (···) opens and shows tabs', async ({ page }) => {
+    const moreBtn = page.locator('.tab-more-btn');
+    await expect(moreBtn).toBeVisible();
+    await moreBtn.click();
+    const menu = page.locator('#tabMoreMenu');
+    await expect(menu).toHaveClass(/open/);
+    // Should contain Sparks tab
+    await expect(menu.locator('button[data-tab="sparks"]')).toBeVisible();
+  });
+
+  test('sparks tab loads with empty state or spark tasks', async ({ page }) => {
+    await switchTab(page, 'sparks');
+    // Should show either empty state or task cards — no errors
+    const content = page.locator('#mainContent');
+    await expect(content).toBeVisible();
+    const hasCards = await content.locator('.task-card').count();
+    const hasEmpty = await content.locator('.empty-state').count();
+    expect(hasCards + hasEmpty).toBeGreaterThan(0);
+  });
+
+  test('counter labels render without question marks', async ({ page }) => {
+    const countersBar = page.locator('#countersBar');
+    await expect(countersBar).toBeVisible();
+    const chips = countersBar.locator('.counter-label');
+    const chipCount = await chips.count();
+    for (let i = 0; i < chipCount; i++) {
+      const text = await chips.nth(i).textContent();
+      expect(text).not.toMatch(/\?{3,}/);
+    }
   });
 });
