@@ -337,13 +337,27 @@ function renderTabBar() {
 }
 
 function toggleTabMore(e) {
+  e.preventDefault();
   e.stopPropagation();
-  document.getElementById('tabMoreMenu').classList.toggle('open');
+  e.stopImmediatePropagation();
+  const menu = document.getElementById('tabMoreMenu');
+  if (menu) {
+    const isOpen = menu.classList.contains('open');
+    menu.classList.toggle('open');
+    // Re-check in case something else closed it
+    if (!isOpen) requestAnimationFrame(() => menu.classList.add('open'));
+  }
 }
 function closeTabMore() {
   document.getElementById('tabMoreMenu')?.classList.remove('open');
 }
-document.addEventListener('click', closeTabMore);
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('tabMoreMenu');
+  const btn = document.querySelector('.tab-more-btn');
+  if (menu && btn && !btn.contains(e.target as Node) && !menu.contains(e.target as Node)) {
+    menu.classList.remove('open');
+  }
+});
 
 async function switchTab(id) {
   setCurrentTab(id);
