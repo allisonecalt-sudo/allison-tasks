@@ -319,13 +319,12 @@ function renderTabBar() {
     .join('');
 
   html += `<div class="tab-more-wrap">
-    <button class="tab-more-btn ${moreActive ? 'has-active' : ''}" onclick="toggleTabMore(event)">···</button>
+    <button class="tab-more-btn ${moreActive ? 'has-active' : ''}" id="tabMoreBtn">···</button>
     <div class="tab-more-menu" id="tabMoreMenu">
       ${moreTabs
         .map(
-          (
-            t,
-          ) => `<button class="${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}');closeTabMore();">
+          (t) =>
+            `<button class="${t.id === currentTab ? 'active' : ''}" data-tab="${t.id}">
           ${t.label}<span class="tab-count" id="tabCount_${t.id}"></span>
         </button>`,
         )
@@ -334,6 +333,23 @@ function renderTabBar() {
   </div>`;
 
   bar.innerHTML = html;
+
+  // Attach event listeners directly (not inline onclick)
+  const moreBtn = document.getElementById('tabMoreBtn');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('tabMoreMenu')?.classList.toggle('open');
+    });
+  }
+  const menuBtns = document.querySelectorAll('#tabMoreMenu button[data-tab]');
+  menuBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tabId = (btn as HTMLElement).dataset.tab;
+      document.getElementById('tabMoreMenu')?.classList.remove('open');
+      if (tabId) switchTab(tabId);
+    });
+  });
 }
 
 function toggleTabMore(e) {
