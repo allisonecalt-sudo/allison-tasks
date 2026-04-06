@@ -1,6 +1,6 @@
 import { today, formatDate } from './dates';
 import { esc, emptyState, buildSearchBar } from './ui';
-import { tasks, globalSearch } from './state';
+import { tasks, globalSearch, hasHebrew } from './state';
 import { showToast } from './ui';
 import { getWeekDates } from './dates';
 import {
@@ -45,7 +45,7 @@ export async function renderCountersBar() {
       (c) =>
         `<div class="counter-chip" onclick="editCounter('${c.id}')" title="Click to update">
       <span class="counter-val">${c.value}</span>
-      <span class="counter-label">${esc(c.label)}</span>
+      <span class="counter-label"${hasHebrew(c.label) ? ' dir="rtl" style="font-family:Rubik,sans-serif"' : ''}>${esc(c.label)}</span>
     </div>`,
     )
     .join('');
