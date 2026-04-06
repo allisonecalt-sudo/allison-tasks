@@ -97,6 +97,7 @@ export function getBlockCountForDate(dateStr) {
       t.due_date === dateStr &&
       t.status !== 'done' &&
       t.status !== 'backlog' &&
+      t.status !== 'spark' &&
       !t.parent_id &&
       t.due_time &&
       t.due_time.includes('-'),
@@ -120,12 +121,12 @@ export async function renderDay(mc) {
   const isViewingToday = viewingDate === today();
   const viewStr = viewingDate;
   let dayTasks = tasks.filter(
-    (t) => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id,
+    (t) => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id,
   );
   // Only show overdue tasks when viewing today
   const overdueTasks = isViewingToday
     ? tasks.filter(
-        (t) => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog' && !t.parent_id,
+        (t) => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id,
       )
     : [];
 
@@ -545,7 +546,7 @@ export function updateDayNowLine() {
 
 // ─── Render: Focus (merges Today + Waiting + Floating + Decide) ───
 export function renderFocus(mc) {
-  let active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && !t.parent_id);
+  let active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id);
 
   // Search filter
   if (focusSearch) {
@@ -644,7 +645,7 @@ export function renderFocus(mc) {
 
 // ─── Render: Streams ───
 export function renderStreams(mc) {
-  let active = tasks.filter((t) => t.status !== 'backlog' && !t.parent_id);
+  let active = tasks.filter((t) => t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id);
   if (globalSearch) active = active.filter((t) => matchesSearch(t, globalSearch));
   const streams = {};
   active.forEach((t) => {
@@ -732,7 +733,7 @@ export function renderAll(mc) {
 
   // Filter chips
   const energies = ['low', 'medium', 'high'];
-  const statuses = ['open', 'in_progress', 'waiting', 'decide', 'maybe', 'backlog'];
+  const statuses = ['open', 'in_progress', 'waiting', 'decide', 'maybe', 'backlog', 'spark'];
   const activeTags = [...new Set(tasks.flatMap((t) => t.tags || []))].sort();
 
   html += `<div class="filter-row">`;
@@ -943,6 +944,58 @@ export function renderBacklog(mc) {
       .join('');
   }
   mc.innerHTML = html;
+}
+
+// ─── Render: Sparks ───
+export function renderSparks(mc) {
+  const sparks = tasks.filter((t) => t.status === 'spark' && !t.parent_id);
+  if (globalSearch) {
+    const filtered = sparks.filter((t) => matchesSearch(t, globalSearch));
+    let html = buildSearchBar('globalSearch', 'Search sparks...');
+    if (filtered.length === 0) {
+      html += emptyState('No matching sparks', 'Try a different search');
+    } else {
+      html += filtered
+        .map((t) => {
+          const extra = `<button class="activate-btn" onclick="activateTask(event,'${t.id}')">Activate</button>`;
+          return renderTaskCard(t, false, extra, true);
+        })
+        .join('');
+    }
+    mc.innerHTML = html;
+    _wireSearchInput(mc, 'globalSearch');
+    return;
+  }
+  let html = buildSearchBar('globalSearch', 'Search sparks...');
+  if (sparks.length === 0) {
+    html += emptyState('No sparks yet', 'Move ideas here that you want to remember but aren\'t ready to act on');
+    mc.innerHTML = html;
+    _wireSearchInput(mc, 'globalSearch');
+    return;
+  }
+  // Group by first area tag
+  const groups: Record<string, any[]> = {};
+  sparks.forEach((t) => {
+    const areaTags = (t.tags || []).filter((tag) => {
+      const def = tagDefs.find((d) => d.name === tag);
+      return def ? def.category === 'area' : false;
+    });
+    const group = areaTags.length > 0 ? areaTags[0] : 'untagged';
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(t);
+  });
+  for (const [name, gTasks] of Object.entries(groups).sort()) {
+    const displayName = name === 'untagged' ? 'Untagged' : name;
+    html += `<div class="section-hdr">${esc(displayName)}</div>`;
+    html += (gTasks as any[])
+      .map((t) => {
+        const extra = `<button class="activate-btn" onclick="activateTask(event,'${t.id}')">Activate</button>`;
+        return renderTaskCard(t, false, extra, true);
+      })
+      .join('');
+  }
+  mc.innerHTML = html;
+  _wireSearchInput(mc, 'globalSearch');
 }
 
 // ─── Render: Done ───

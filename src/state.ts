@@ -90,6 +90,7 @@ export const TABS = [
   { id: 'week', label: 'Week' },
   { id: 'events', label: 'Events' },
   { id: 'recurring', label: 'Recurring' },
+  { id: 'sparks', label: 'Sparks' },
   { id: 'done', label: 'Done' },
   { id: 'history', label: 'History' },
   { id: 'dashboards', label: 'Dashboards' },

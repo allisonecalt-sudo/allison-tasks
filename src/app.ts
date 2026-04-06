@@ -81,6 +81,7 @@ import {
   renderFloating,
   renderLow,
   renderBacklog,
+  renderSparks,
   renderDone,
   renderHistory,
   openAddNoteModal,
@@ -275,7 +276,7 @@ function renderRibbon() {
     .join('');
 
   const todayCount = tasks.filter(
-    (t) => t.due_date === today() && t.status !== 'done' && t.status !== 'backlog',
+    (t) => t.due_date === today() && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
   ).length;
   const summaryEl = document.getElementById('ribbonSummary');
   if (summaryEl) {
@@ -360,7 +361,7 @@ async function switchTab(id) {
 
 async function updateTabCounts() {
   const focusCount = tasks.filter((t) => {
-    if (t.status === 'done' || t.status === 'backlog') return false;
+    if (t.status === 'done' || t.status === 'backlog' || t.status === 'spark') return false;
     return (
       isToday(t) ||
       isOverdue(t) ||
@@ -376,10 +377,10 @@ async function updateTabCounts() {
   const counts = {
     day:
       tasks.filter(
-        (t) => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog',
+        (t) => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
       ).length + getRecurringForDate(viewingDate).length,
     focus: focusCount,
-    all: tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog').length,
+    all: tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark').length,
     streams: '',
     week:
       (() => {
@@ -390,7 +391,7 @@ async function updateTabCounts() {
           wk.push(localDateStr(d));
         }
         return tasks.filter(
-          (t) => t.status !== 'done' && t.status !== 'backlog' && wk.includes(t.due_date),
+          (t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && wk.includes(t.due_date),
         ).length;
       })() || '',
     events: eventsData.filter((e) => e.date >= today()).length || '',
@@ -402,6 +403,7 @@ async function updateTabCounts() {
         (t) => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= a,
       ).length;
     })(),
+    sparks: tasks.filter((t) => t.status === 'spark').length || '',
     dashboards: '',
   };
   TABS.forEach((t) => {
@@ -447,6 +449,9 @@ async function renderCurrentTab() {
       break;
     case 'recurring':
       renderRecurring(mc);
+      break;
+    case 'sparks':
+      renderSparks(mc);
       break;
     case 'done':
       renderDone(mc);

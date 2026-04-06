@@ -74,7 +74,7 @@ export function renderTaskCard(
 
   const agingDays = t.created_at && t.status !== 'done' ? daysAgo(t.created_at.slice(0, 10)) : 0;
   const isAging =
-    agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog';
+    agingDays >= 14 && t.status !== 'done' && t.status !== 'waiting' && t.status !== 'backlog' && t.status !== 'spark';
 
   return `<div class="task-card${isAging ? ' aging' : ''}" id="card_${t.id}" ${isAging ? 'title="Added ' + agingDays + ' days ago"' : ''}>
     <div class="task-top">

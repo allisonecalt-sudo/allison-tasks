@@ -40,7 +40,7 @@ export function buildWeeklyPlanning() {
   html += `<div class="dash-card" style="padding:.5rem .75rem">`;
   weekDates.forEach((wd, i) => {
     let dayTasks = tasks.filter(
-      (t) => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog',
+      (t) => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
     );
     if (globalSearch) dayTasks = dayTasks.filter((t) => matchesSearch(t, globalSearch));
     const count = dayTasks.length;
@@ -156,7 +156,7 @@ export function filterFloaters(energy) {
 let selectedEnergy = null;
 
 export function buildEnergyBudget() {
-  const active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog');
+  const active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark');
   const todayTasks = active.filter((t) => t.due_date === today());
 
   const lowC = active.filter((t) => t.energy === 'low').length;
@@ -345,7 +345,7 @@ export function buildWaitingTracker() {
 
 // ── Dashboard 4: Stream Health ──
 export function buildStreamHealth() {
-  const allT = tasks.filter((t) => t.status !== 'backlog');
+  const allT = tasks.filter((t) => t.status !== 'backlog' && t.status !== 'spark');
   const streams = {};
   allT.forEach((t) => {
     const areaTags = (t.tags || []).filter((tag) => {
@@ -421,7 +421,7 @@ export function buildStreamHealth() {
   }
 
   // Tag co-occurrence (merged from Tags)
-  const openTagged = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog');
+  const openTagged = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark');
   const tagPairs = {};
   openTagged.forEach((t) => {
     const tgs = t.tags || [];
@@ -538,10 +538,10 @@ export function buildDailyReview() {
     (t) => t.status === 'done' && t.completed_at && t.completed_at.slice(0, 10) === todayStr,
   );
   const rolledOver = tasks.filter(
-    (t) => t.due_date === yesterdayStr && t.status !== 'done' && t.status !== 'backlog',
+    (t) => t.due_date === yesterdayStr && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
   );
   const tomorrowPlate = tasks.filter(
-    (t) => t.due_date === tomorrowStr && t.status !== 'done' && t.status !== 'backlog',
+    (t) => t.due_date === tomorrowStr && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
   );
 
   // Momentum: completed last 7d vs created last 7d
@@ -694,10 +694,10 @@ export function buildTriageInbox() {
     (t) => t.status === 'open' && !t.due_date && !(t.tags || []).length && !t.energy,
   );
   const needsEnergy = tasks.filter(
-    (t) => t.status !== 'done' && t.status !== 'backlog' && !t.energy,
+    (t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.energy,
   );
   const noTags = tasks.filter(
-    (t) => t.status !== 'done' && t.status !== 'backlog' && !(t.tags || []).length,
+    (t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !(t.tags || []).length,
   );
 
   let html =
@@ -804,7 +804,7 @@ export function buildTriageInbox() {
 // ── Dashboard: Overload Detector ──
 export function buildOverloadDetector() {
   const todayStr = today();
-  const active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog');
+  const active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark');
   const days = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date();
@@ -912,7 +912,7 @@ export function buildOverloadDetector() {
 
 // ── Dashboard 7: Tag Intelligence ──
 export function buildTagIntelligence() {
-  const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog');
+  const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark');
 
   // Count by tag
   const tagCounts = {};

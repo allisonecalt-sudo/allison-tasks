@@ -379,7 +379,7 @@ export function renderWeekTab(mc) {
   html += '<div class="week-view-tab">';
   weekDates.forEach((wd, i) => {
     const dayTasks = tasks.filter(
-      (t) => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog',
+      (t) => t.due_date === wd && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
     );
     const isToday = wd === todayStr;
     const d = new Date(wd + 'T00:00:00');
