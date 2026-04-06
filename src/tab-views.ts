@@ -121,12 +121,22 @@ export async function renderDay(mc) {
   const isViewingToday = viewingDate === today();
   const viewStr = viewingDate;
   let dayTasks = tasks.filter(
-    (t) => t.due_date === viewStr && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id,
+    (t) =>
+      t.due_date === viewStr &&
+      t.status !== 'done' &&
+      t.status !== 'backlog' &&
+      t.status !== 'spark' &&
+      !t.parent_id,
   );
   // Only show overdue tasks when viewing today
   const overdueTasks = isViewingToday
     ? tasks.filter(
-        (t) => isOverdue(t) && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id,
+        (t) =>
+          isOverdue(t) &&
+          t.status !== 'done' &&
+          t.status !== 'backlog' &&
+          t.status !== 'spark' &&
+          !t.parent_id,
       )
     : [];
 
@@ -546,7 +556,9 @@ export function updateDayNowLine() {
 
 // ─── Render: Focus (merges Today + Waiting + Floating + Decide) ───
 export function renderFocus(mc) {
-  let active = tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id);
+  let active = tasks.filter(
+    (t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && !t.parent_id,
+  );
 
   // Search filter
   if (focusSearch) {
@@ -968,7 +980,10 @@ export function renderSparks(mc) {
   }
   let html = buildSearchBar('globalSearch', 'Search sparks...');
   if (sparks.length === 0) {
-    html += emptyState('No sparks yet', 'Move ideas here that you want to remember but aren\'t ready to act on');
+    html += emptyState(
+      'No sparks yet',
+      "Move ideas here that you want to remember but aren't ready to act on",
+    );
     mc.innerHTML = html;
     _wireSearchInput(mc, 'globalSearch');
     return;

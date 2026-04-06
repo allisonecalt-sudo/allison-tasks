@@ -276,7 +276,11 @@ function renderRibbon() {
     .join('');
 
   const todayCount = tasks.filter(
-    (t) => t.due_date === today() && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
+    (t) =>
+      t.due_date === today() &&
+      t.status !== 'done' &&
+      t.status !== 'backlog' &&
+      t.status !== 'spark',
   ).length;
   const summaryEl = document.getElementById('ribbonSummary');
   if (summaryEl) {
@@ -377,10 +381,15 @@ async function updateTabCounts() {
   const counts = {
     day:
       tasks.filter(
-        (t) => t.due_date === viewingDate && t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark',
+        (t) =>
+          t.due_date === viewingDate &&
+          t.status !== 'done' &&
+          t.status !== 'backlog' &&
+          t.status !== 'spark',
       ).length + getRecurringForDate(viewingDate).length,
     focus: focusCount,
-    all: tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark').length,
+    all: tasks.filter((t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark')
+      .length,
     streams: '',
     week:
       (() => {
@@ -391,7 +400,11 @@ async function updateTabCounts() {
           wk.push(localDateStr(d));
         }
         return tasks.filter(
-          (t) => t.status !== 'done' && t.status !== 'backlog' && t.status !== 'spark' && wk.includes(t.due_date),
+          (t) =>
+            t.status !== 'done' &&
+            t.status !== 'backlog' &&
+            t.status !== 'spark' &&
+            wk.includes(t.due_date),
         ).length;
       })() || '',
     events: eventsData.filter((e) => e.date >= today()).length || '',
