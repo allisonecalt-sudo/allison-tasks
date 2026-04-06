@@ -354,7 +354,8 @@ function closeTabMore() {
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('tabMoreMenu');
   const btn = document.querySelector('.tab-more-btn');
-  if (menu && btn && !btn.contains(e.target as Node) && !menu.contains(e.target as Node)) {
+  const target = e.target as HTMLElement;
+  if (menu && btn && !btn.contains(target) && !menu.contains(target)) {
     menu.classList.remove('open');
   }
 });
