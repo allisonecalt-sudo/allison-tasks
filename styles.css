@@ -309,7 +309,7 @@ textarea {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
-  overflow-x: auto;
+  overflow: visible;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   position: sticky;
