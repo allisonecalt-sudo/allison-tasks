@@ -353,6 +353,9 @@ textarea {
   border-radius: 8px;
   margin-inline-start: 0.3rem;
 }
+.tab-count:empty {
+  display: none;
+}
 .tab-btn.active .tab-count {
   background: var(--asoft);
   color: var(--accent);
