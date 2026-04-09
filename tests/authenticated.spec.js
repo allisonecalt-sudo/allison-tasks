@@ -17,6 +17,8 @@ async function switchTab(page, tabId) {
 }
 
 test.describe('Authenticated tests', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
