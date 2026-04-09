@@ -471,19 +471,54 @@ export async function renderDay(mc) {
     otherRecurring.forEach((rd) => {
       const r = rd.item;
       const titleDir = hasHebrew(r.title) ? ' dir="rtl"' : '';
-      const overdueTag = rd.occ.overdue
-        ? '<span style="color:#ef4444;font-size:.7rem;font-weight:600;margin-inline-start:.4rem">OVERDUE</span>'
-        : '';
-      html += `<div class="task-card" style="border-inline-start:3px solid var(--accent)">
+
+      // Human-friendly frequency
+      const freq = r.frequency_days;
+      let freqLabel = `Every ${freq} days`;
+      if (freq === 7) freqLabel = 'Every week';
+      else if (freq === 14) freqLabel = 'Every 2 weeks';
+      else if (freq === 21) freqLabel = 'Every 3 weeks';
+      else if (freq === 30) freqLabel = 'Every month';
+      else if (freq === 60) freqLabel = 'Every 2 months';
+      else if (freq === 90) freqLabel = 'Every 3 months';
+
+      // The due date of THIS occurrence
+      const dueDateLong = formatDateLong(rd.occDateStr);
+
+      // Calculate next occurrence after this one
+      const nextDate = new Date(rd.occ.date);
+      nextDate.setDate(nextDate.getDate() + freq);
+      const nextDateLong = formatDateLong(localDateStr(nextDate));
+
+      // Days overdue
+      const todayDate = new Date(today() + 'T00:00:00');
+      const daysLate = Math.floor((todayDate.getTime() - rd.occ.date.getTime()) / 86400000);
+      const lateLabel = rd.occ.overdue
+        ? daysLate === 0
+          ? 'Due today'
+          : daysLate === 1
+            ? '1 day late'
+            : `${daysLate} days late`
+        : 'Due today';
+
+      const statusColor = rd.occ.overdue ? '#ef4444' : '#22c55e';
+
+      html += `<div class="task-card" style="border-inline-start:3px solid ${statusColor}">
         <div class="task-top">
           <div class="task-body" style="flex:1">
             <div class="task-title-row">
               <span style="font-size:.8rem">🔁</span>
               <span class="task-title"${titleDir}>${esc(r.title)}</span>
-              ${overdueTag}
+              <span style="color:${statusColor};font-size:.7rem;font-weight:600;margin-inline-start:.4rem">${lateLabel}</span>
             </div>
-            <div class="task-meta">
-              <span class="tag-pill" style="background:var(--accent-bg);color:var(--accent)">Every ${r.frequency_days}d</span>
+            <div class="task-meta" style="display:flex;flex-direction:column;gap:.15rem;margin-top:.3rem">
+              <div style="font-size:.72rem;color:var(--muted)">
+                <strong>Was due:</strong> ${dueDateLong}
+              </div>
+              <div style="font-size:.72rem;color:var(--muted)">
+                <strong>Next:</strong> ${nextDateLong}
+              </div>
+              <div style="font-size:.68rem;color:var(--muted);opacity:.8">${freqLabel}</div>
             </div>
           </div>
           <button onclick="markRecurringDone('${r.id}','${rd.occDateStr}')" style="
