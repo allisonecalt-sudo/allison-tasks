@@ -6,6 +6,8 @@ import { getWeekDates } from './dates';
 import {
   getEventsData,
   saveEventsData,
+  addEventToSupabase,
+  deleteEventFromSupabase,
   getRecurringEventsData,
   loadRecurringEventsFromSupabase,
   addRecurringEventToSupabase,
@@ -193,7 +195,7 @@ export function renderEvents(mc) {
   _wireSearchInput(mc, 'globalSearch');
 }
 
-export function addEvent() {
+export async function addEvent() {
   const title = (document.getElementById('evTitle') as HTMLInputElement).value.trim();
   const date = (document.getElementById('evDate') as HTMLInputElement).value;
   if (!title || !date) {
@@ -210,14 +212,20 @@ export function addEvent() {
     with_person: withPerson,
     created_at: new Date().toISOString(),
   };
+  const saved = await addEventToSupabase(ev);
+  if (!saved) {
+    showToast('Failed to save event');
+    return;
+  }
   const events = getEventsData();
-  events.push(ev);
+  events.push(saved);
   saveEventsData(events);
   showToast('Event added');
   _renderCurrentTab();
 }
 
-export function deleteEvent(id) {
+export async function deleteEvent(id) {
+  await deleteEventFromSupabase(id);
   saveEventsData(getEventsData().filter((e) => e.id !== id));
   showToast('Event deleted');
   _renderCurrentTab();

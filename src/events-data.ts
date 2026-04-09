@@ -21,6 +21,42 @@ export function saveEventsData(arr: any[]): void {
   localStorage.setItem('allison_events', JSON.stringify(arr));
 }
 
+export async function loadEventsFromSupabase(): Promise<void> {
+  try {
+    const { data, error } = await sb.from('events').select('*').order('date');
+    if (error) {
+      console.error('Failed to load events:', error);
+      return;
+    }
+    _eventsCache = data;
+    localStorage.setItem('allison_events', JSON.stringify(data));
+  } catch (e) {
+    console.error('Events fetch error:', e);
+  }
+}
+
+export async function addEventToSupabase(ev: any): Promise<any | null> {
+  try {
+    const { data, error } = await sb.from('events').insert(ev).select();
+    if (error) {
+      console.error('Failed to add event:', error);
+      return null;
+    }
+    return data[0];
+  } catch (e) {
+    console.error('Event insert error:', e);
+    return null;
+  }
+}
+
+export async function deleteEventFromSupabase(id: string): Promise<void> {
+  try {
+    await sb.from('events').delete().eq('id', id);
+  } catch (e) {
+    console.error('Event delete error:', e);
+  }
+}
+
 export function getRecurringEventsData(): any[] {
   if (_recurringEventsCache) return _recurringEventsCache;
   try {

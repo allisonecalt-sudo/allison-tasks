@@ -44,6 +44,7 @@ import {
   getEventsData,
   saveRecurringEventsData,
   loadRecurringEventsFromSupabase,
+  loadEventsFromSupabase,
   getRecurringData,
   getDaysUntilDue,
 } from './events-data';
@@ -206,6 +207,7 @@ async function refreshData() {
       sb.from('tasks').select('*').order('sort_order', { ascending: true, nullsFirst: false }),
       sb.from('tag_definitions').select('*'),
       loadRecurringEventsFromSupabase(),
+      loadEventsFromSupabase(),
     ]);
     if (tasksRes.error) throw tasksRes.error;
     if (tagsRes.error) throw tagsRes.error;
