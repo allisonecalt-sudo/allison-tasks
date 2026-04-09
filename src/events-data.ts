@@ -1,5 +1,5 @@
 import { sb } from './config';
-import { today } from './dates';
+import { today, localDateStr } from './dates';
 
 // ─── Events (localStorage, cached) ───
 let _eventsCache: any[] | null = null;
@@ -107,7 +107,7 @@ export function clearRecurringEventsCache(): void {
 
 export function isDoneForDate(r: any, date: Date): boolean {
   if (!r.done_dates) return false;
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = localDateStr(date);
   return r.done_dates.includes(dateStr);
 }
 

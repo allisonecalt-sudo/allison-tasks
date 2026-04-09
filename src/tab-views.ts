@@ -158,7 +158,7 @@ export async function renderDay(mc) {
   recurringItems.forEach((r) => {
     const occs = getRecurringOccurrences(r);
     occs.forEach((occ) => {
-      const occDateStr = occ.date.toISOString().slice(0, 10);
+      const occDateStr = localDateStr(occ.date);
       if (occDateStr === viewStr || (isViewingToday && occ.overdue)) {
         recurringDueToday.push({ item: r, occ, occDateStr });
       }

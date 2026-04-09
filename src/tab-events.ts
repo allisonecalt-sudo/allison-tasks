@@ -1,4 +1,4 @@
-import { today, formatDate } from './dates';
+import { today, formatDate, localDateStr } from './dates';
 import { esc, emptyState, buildSearchBar } from './ui';
 import { tasks, globalSearch, hasHebrew } from './state';
 import { showToast } from './ui';
@@ -290,7 +290,7 @@ export async function renderRecurring(mc) {
           dotColor = '#c0392b';
           dueText = daysUntil === 0 ? 'TODAY' : 'OVERDUE';
         } else if (daysUntil <= 7) dotColor = '#b5621a';
-        const occDateStr = occ.date.toISOString().slice(0, 10);
+        const occDateStr = localDateStr(occ.date);
         html += `<div class="recurring-item">
           <div class="recurring-status-dot" style="background:${dotColor}"></div>
           <div class="recurring-body">
