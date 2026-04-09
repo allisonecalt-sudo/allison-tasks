@@ -19,27 +19,56 @@ const sbHeaders = {
 
 /** Clean up test tasks via Supabase REST API — no fragile UI clicks */
 async function cleanup() {
-  // Find all test tasks
-  const res = await fetch(`${SB_URL}/tasks?title=like.${PREFIX}*&select=id`, {
-    headers: sbHeaders,
-  });
+  // Find all test tasks (PW_SUB_* and NOSOLO_*)
+  const res = await fetch(
+    `${SB_URL}/tasks?or=(title.like.${PREFIX}*,title.like.NOSOLO_*)&select=id`,
+    { headers: sbHeaders },
+  );
   const tasks = await res.json();
   if (!tasks || tasks.length === 0) return;
 
-  const ids = tasks.map((t) => t.id);
+  const parentIds = tasks.map((t) => t.id);
 
-  // Delete subtasks of these parents first
-  await fetch(`${SB_URL}/tasks?parent_id=in.(${ids.join(',')})`, {
-    method: 'DELETE',
-    headers: sbHeaders,
-  });
+  // Get IDs of children too (Sub A, Sub B, Checkable sub, Inline child, etc.)
+  const childRes = await fetch(
+    `${SB_URL}/tasks?parent_id=in.(${parentIds.join(',')})&select=id`,
+    { headers: sbHeaders },
+  );
+  const children = await childRes.json();
+  const childIds = (children || []).map((c) => c.id);
 
-  // Delete the parent test tasks
-  await fetch(`${SB_URL}/tasks?id=in.(${ids.join(',')})`, {
+  const allIds = [...parentIds, ...childIds];
+
+  // Delete task_history first (foreign key constraint)
+  if (allIds.length > 0) {
+    await fetch(`${SB_URL}/task_history?task_id=in.(${allIds.join(',')})`, {
+      method: 'DELETE',
+      headers: sbHeaders,
+    });
+  }
+
+  // Delete children
+  if (childIds.length > 0) {
+    await fetch(`${SB_URL}/tasks?id=in.(${childIds.join(',')})`, {
+      method: 'DELETE',
+      headers: sbHeaders,
+    });
+  }
+
+  // Delete parents
+  await fetch(`${SB_URL}/tasks?id=in.(${parentIds.join(',')})`, {
     method: 'DELETE',
     headers: sbHeaders,
   });
 }
+
+/** Global cleanup — runs before + after the whole suite */
+test.beforeAll(async () => {
+  await cleanup();
+});
+test.afterAll(async () => {
+  await cleanup();
+});
 
 test.describe('Parent / Child (Subtask) functionality', () => {
   test.beforeEach(async ({ page }) => {

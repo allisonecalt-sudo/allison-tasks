@@ -74,6 +74,41 @@ jobs:
           TASK_APP_EMAIL: ${{ secrets.TASK_APP_EMAIL }}
           TASK_APP_PASSWORD: ${{ secrets.TASK_APP_PASSWORD }}
 
+      - name: Clean up test data (always)
+        if: always()
+        env:
+          SB_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          SB_URL="https://hpiyvnfhoqnnnotrmwaz.supabase.co/rest/v1"
+          # Find all test tasks
+          TASKS=$(curl -s "$SB_URL/tasks?select=id&or=(title.like.PW_SUB_*,title.like.NOSOLO_*)" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY")
+          PARENT_IDS=$(echo "$TASKS" | python3 -c "import json,sys; print(','.join(t['id'] for t in json.load(sys.stdin)))" || echo "")
+          if [ -z "$PARENT_IDS" ]; then
+            echo "No test tasks to clean up"
+            exit 0
+          fi
+          # Get child IDs
+          CHILDREN=$(curl -s "$SB_URL/tasks?select=id&parent_id=in.($PARENT_IDS)" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY")
+          CHILD_IDS=$(echo "$CHILDREN" | python3 -c "import json,sys; print(','.join(t['id'] for t in json.load(sys.stdin)))" || echo "")
+          ALL_IDS="$PARENT_IDS"
+          if [ -n "$CHILD_IDS" ]; then
+            ALL_IDS="$PARENT_IDS,$CHILD_IDS"
+          fi
+          # Delete task_history
+          curl -s -X DELETE "$SB_URL/task_history?task_id=in.($ALL_IDS)" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" >/dev/null
+          # Delete children
+          if [ -n "$CHILD_IDS" ]; then
+            curl -s -X DELETE "$SB_URL/tasks?id=in.($CHILD_IDS)" \
+              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" >/dev/null
+          fi
+          # Delete parents
+          curl -s -X DELETE "$SB_URL/tasks?id=in.($PARENT_IDS)" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" >/dev/null
+          echo "Test data cleaned up"
+
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
