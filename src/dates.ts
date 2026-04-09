@@ -76,19 +76,46 @@ export function timeAgo(isoStr: string): string {
 
 interface TaskLike {
   due_date?: string | null;
+  due_date_start?: string | null;
+  due_date_end?: string | null;
   status?: string;
 }
 
 export function isOverdue(t: TaskLike): boolean {
-  return !!(t.due_date && t.due_date < today() && t.status !== 'done');
+  if (t.status === 'done') return false;
+  if (t.due_date && t.due_date < today()) return true;
+  // Range task: overdue if end date has passed
+  if (t.due_date_end && t.due_date_end < today()) return true;
+  return false;
 }
 
 export function isToday(t: TaskLike): boolean {
-  return t.due_date === today();
+  if (t.due_date === today()) return true;
+  // Range task: today falls within the window
+  if (t.due_date_start && t.due_date_end) {
+    return t.due_date_start <= today() && t.due_date_end >= today();
+  }
+  return false;
 }
 
 export function isTomorrow(t: TaskLike): boolean {
-  return t.due_date === tomorrow();
+  if (t.due_date === tomorrow()) return true;
+  // Range task: tomorrow falls within the window
+  if (t.due_date_start && t.due_date_end) {
+    return t.due_date_start <= tomorrow() && t.due_date_end >= tomorrow();
+  }
+  return false;
+}
+
+export function hasDateRange(t: TaskLike): boolean {
+  return !!(t.due_date_start || t.due_date_end);
+}
+
+export function isInDateRange(t: TaskLike, dateStr: string): boolean {
+  if (!hasDateRange(t)) return false;
+  const start = t.due_date_start || '0000-01-01';
+  const end = t.due_date_end || '9999-12-31';
+  return start <= dateStr && dateStr <= end;
 }
 
 export function daysFromToday(dateStr: string): string {

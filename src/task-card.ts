@@ -26,6 +26,19 @@ export function renderTaskCard(
     if (isOverdue(t) && t.status !== 'done') cls = 'overdue';
     else if (isToday(t)) cls = 'today';
     dueHTML = `<span class="task-due ${cls}">${formatDate(t.due_date)}${t.due_time ? ' ' + t.due_time : ''}</span>`;
+  } else if (t.due_date_start || t.due_date_end) {
+    // Date range — flexible window
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let cls = '';
+    if (t.due_date_end && t.due_date_end < todayStr && t.status !== 'done') cls = 'overdue';
+    else if (
+      (t.due_date_start && t.due_date_start <= todayStr && t.status !== 'done') ||
+      (t.due_date_end && t.due_date_end >= todayStr)
+    )
+      cls = 'today';
+    const startStr = t.due_date_start ? formatDate(t.due_date_start) : '?';
+    const endStr = t.due_date_end ? formatDate(t.due_date_end) : '?';
+    dueHTML = `<span class="task-due ${cls}" title="Flexible window">${startStr} → ${endStr}</span>`;
   }
 
   const tagHTML = (t.tags || [])

@@ -233,7 +233,9 @@ function renderRibbon() {
   const waitCount = tasks.filter((t) => t.status === 'waiting').length;
   const decideCount = tasks.filter((t) => t.status === 'decide' || t.status === 'maybe').length;
   const overdueCount = tasks.filter((t) => isOverdue(t)).length;
-  const floatCount = tasks.filter((t) => !t.due_date && t.status === 'open').length;
+  const floatCount = tasks.filter(
+    (t) => !t.due_date && !t.due_date_start && !t.due_date_end && t.status === 'open',
+  ).length;
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const doneWeek = tasks.filter(

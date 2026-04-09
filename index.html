@@ -183,7 +183,7 @@
           </div>
         </div>
 
-        <div class="modal-row">
+        <div class="modal-row" id="editSingleDateRow">
           <div class="modal-field">
             <div class="modal-label">Due Date</div>
             <input type="date" class="modal-input" id="editDueDate" />
@@ -198,6 +198,33 @@
               dir="ltr"
               style="text-align: left"
             />
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <label
+            style="
+              display: flex;
+              align-items: center;
+              gap: 0.4rem;
+              font-size: 0.8rem;
+              color: var(--muted);
+              cursor: pointer;
+            "
+          >
+            <input type="checkbox" id="editUseDateRange" style="width: 14px; height: 14px" />
+            Use date range instead (flexible window)
+          </label>
+        </div>
+
+        <div class="modal-row" id="editDateRangeRow" style="display: none">
+          <div class="modal-field">
+            <div class="modal-label">Start Date</div>
+            <input type="date" class="modal-input" id="editDueDateStart" />
+          </div>
+          <div class="modal-field">
+            <div class="modal-label">End Date</div>
+            <input type="date" class="modal-input" id="editDueDateEnd" />
           </div>
         </div>
 
@@ -319,6 +346,5 @@
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
-
   </body>
 </html>

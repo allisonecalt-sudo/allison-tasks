@@ -30,9 +30,23 @@ export function openEditModal(id) {
   (document.getElementById('editStatus') as HTMLSelectElement).value = t.status || 'open';
   (document.getElementById('editDueDate') as HTMLInputElement).value = t.due_date || '';
   (document.getElementById('editDueTime') as HTMLInputElement).value = t.due_time || '';
+  (document.getElementById('editDueDateStart') as HTMLInputElement).value = t.due_date_start || '';
+  (document.getElementById('editDueDateEnd') as HTMLInputElement).value = t.due_date_end || '';
   (document.getElementById('editWaitingOn') as HTMLInputElement).value = t.waiting_on || '';
   (document.getElementById('editWaitingFollowup') as HTMLInputElement).value =
     t.waiting_followup || '';
+
+  // Date range toggle: if the task has a range, show the range row
+  const hasRange = !!(t.due_date_start || t.due_date_end);
+  const rangeCheckbox = document.getElementById('editUseDateRange') as HTMLInputElement;
+  rangeCheckbox.checked = hasRange;
+  document.getElementById('editSingleDateRow').style.display = hasRange ? 'none' : 'flex';
+  document.getElementById('editDateRangeRow').style.display = hasRange ? 'flex' : 'none';
+  rangeCheckbox.onchange = () => {
+    const useRange = rangeCheckbox.checked;
+    document.getElementById('editSingleDateRow').style.display = useRange ? 'none' : 'flex';
+    document.getElementById('editDateRangeRow').style.display = useRange ? 'flex' : 'none';
+  };
 
   // Energy
   document
@@ -254,7 +268,16 @@ export async function saveTask() {
   const title = (document.getElementById('editTitle') as HTMLInputElement).value.trim();
   const notes = (document.getElementById('editNotes') as HTMLTextAreaElement).value.trim() || null;
   const status = (document.getElementById('editStatus') as HTMLSelectElement).value;
-  const dueDate = (document.getElementById('editDueDate') as HTMLInputElement).value || null;
+  const useRange = (document.getElementById('editUseDateRange') as HTMLInputElement).checked;
+  const dueDate = useRange
+    ? null
+    : (document.getElementById('editDueDate') as HTMLInputElement).value || null;
+  const dueDateStart = useRange
+    ? (document.getElementById('editDueDateStart') as HTMLInputElement).value || null
+    : null;
+  const dueDateEnd = useRange
+    ? (document.getElementById('editDueDateEnd') as HTMLInputElement).value || null
+    : null;
   const dueTime = (document.getElementById('editDueTime') as HTMLInputElement).value || null;
   const waitingOn =
     (document.getElementById('editWaitingOn') as HTMLInputElement).value.trim() || null;
@@ -280,6 +303,8 @@ export async function saveTask() {
     status,
     energy,
     due_date: dueDate,
+    due_date_start: dueDateStart,
+    due_date_end: dueDateEnd,
     due_time: dueTime,
     waiting_on: waitingOn,
     waiting_followup: waitingFollowup,

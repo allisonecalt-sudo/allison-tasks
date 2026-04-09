@@ -24,6 +24,7 @@ import {
   isOverdue,
   isToday,
   isTomorrow,
+  isInDateRange,
   timeAgo,
   getWeekDates,
 } from './dates';
@@ -127,6 +128,16 @@ export async function renderDay(mc) {
       t.status !== 'backlog' &&
       t.status !== 'spark' &&
       !t.parent_id,
+  );
+  // Date-range tasks whose window includes this day (shown as suggestions)
+  const rangeTasks = tasks.filter(
+    (t) =>
+      (t.due_date_start || t.due_date_end) &&
+      t.status !== 'done' &&
+      t.status !== 'backlog' &&
+      t.status !== 'spark' &&
+      !t.parent_id &&
+      isInDateRange(t, viewStr),
   );
   // Only show overdue tasks when viewing today
   const overdueTasks = isViewingToday
@@ -461,6 +472,17 @@ export async function renderDay(mc) {
     html += '</div>';
   }
 
+  // ─── Suggestions (date range tasks whose window covers this day) ───
+  if (rangeTasks.length > 0) {
+    html += `<div class="day-flexible">`;
+    html += `<div class="day-flexible-header">
+      <div class="day-flexible-label">💡 Suggestions</div>
+      <div class="day-flexible-count">${rangeTasks.length}</div>
+    </div>`;
+    html += rangeTasks.map((t) => renderTaskCard(t)).join('');
+    html += '</div>';
+  }
+
   // ─── Recurring Tasks Due Today / Overdue ───
   if (otherRecurring.length > 0) {
     html += `<div class="day-flexible">`;
@@ -531,7 +553,7 @@ export async function renderDay(mc) {
   }
 
   // No tasks at all for this day
-  if (dayTasks.length === 0 && otherRecurring.length === 0) {
+  if (dayTasks.length === 0 && otherRecurring.length === 0 && rangeTasks.length === 0) {
     html += emptyState(
       'Day is open',
       isViewingToday ? 'No tasks scheduled for today' : 'No tasks scheduled for this day',
@@ -607,7 +629,9 @@ export function renderFocus(mc) {
   const tom = active.filter((t) => isTomorrow(t));
   const decide = active.filter((t) => t.status === 'decide');
   const waiting = active.filter((t) => t.status === 'waiting');
-  const floating = active.filter((t) => !t.due_date && t.status === 'open');
+  const floating = active.filter(
+    (t) => !t.due_date && !t.due_date_start && !t.due_date_end && t.status === 'open',
+  );
 
   let html = buildSearchBar('focusSearch', 'Search focus items...');
 
@@ -821,7 +845,7 @@ export function renderAll(mc) {
   }
   if (allFilters.energy) filtered = filtered.filter((t) => t.energy === allFilters.energy);
   if (allFilters.noDate) {
-    filtered = filtered.filter((t) => !t.due_date);
+    filtered = filtered.filter((t) => !t.due_date && !t.due_date_start && !t.due_date_end);
   }
   if (allFilters.status) filtered = filtered.filter((t) => t.status === allFilters.status);
   if (allFilters.tags.length)
@@ -921,7 +945,10 @@ export function renderWaiting(mc) {
 
 // ─── Render: Floating ───
 export function renderFloating(mc) {
-  let floating = tasks.filter((t) => !t.due_date && t.status === 'open' && !t.parent_id);
+  let floating = tasks.filter(
+    (t) =>
+      !t.due_date && !t.due_date_start && !t.due_date_end && t.status === 'open' && !t.parent_id,
+  );
   if (globalSearch) floating = floating.filter((t) => matchesSearch(t, globalSearch));
   floating.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   if (floating.length === 0) {
