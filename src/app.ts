@@ -224,6 +224,9 @@ async function refreshData() {
   renderCurrentTab();
 }
 
+// Cached recurring count — updated async in updateTabCounts
+let _cachedOverdueRecurring = 0;
+
 // ─── Ribbon ───
 function renderRibbon() {
   const openCount = tasks.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
@@ -236,6 +239,7 @@ function renderRibbon() {
   const doneWeek = tasks.filter(
     (t) => t.status === 'done' && t.completed_at && new Date(t.completed_at) >= sevenDaysAgo,
   ).length;
+  const recurringCount = _cachedOverdueRecurring;
 
   const stats = [
     { label: 'Open', val: openCount, cls: '', action: () => switchTab('all') },
@@ -251,6 +255,12 @@ function renderRibbon() {
       val: overdueCount,
       cls: overdueCount > 0 ? 'amber' : '',
       action: () => switchTab('focus'),
+    },
+    {
+      label: 'Recurring',
+      val: recurringCount,
+      cls: recurringCount > 0 ? 'amber' : '',
+      action: () => switchTab('recurring'),
     },
     {
       label: 'Floating',
@@ -409,6 +419,11 @@ async function updateTabCounts() {
   const eventsData = getEventsData();
   const recurringData = await getRecurringData();
   const overdueRecurring = recurringData.filter((r) => getDaysUntilDue(r) <= 0).length;
+  // Update ribbon with recurring count
+  if (_cachedOverdueRecurring !== overdueRecurring) {
+    _cachedOverdueRecurring = overdueRecurring;
+    renderRibbon();
+  }
   const counts = {
     day:
       tasks.filter(
