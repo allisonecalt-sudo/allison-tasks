@@ -32,7 +32,33 @@
           autocomplete="current-password"
         />
         <button class="auth-btn" id="authBtn" onclick="doLogin()">Sign In</button>
+        <a href="#" class="auth-link" onclick="doForgotPassword(event)">Forgot password?</a>
         <div class="auth-error" id="authError"></div>
+        <div class="auth-ok" id="authOk"></div>
+      </div>
+    </div>
+
+    <!-- Reset password -->
+    <div class="auth-screen" id="resetScreen" style="display: none">
+      <div class="auth-card">
+        <h1>Set new password</h1>
+        <p>You're verified by email. Enter a new password.</p>
+        <input
+          type="password"
+          class="auth-input"
+          id="resetPass"
+          placeholder="New password (min 6 chars)"
+          autocomplete="new-password"
+        />
+        <input
+          type="password"
+          class="auth-input"
+          id="resetPass2"
+          placeholder="Confirm new password"
+          autocomplete="new-password"
+        />
+        <button class="auth-btn" id="resetBtn" onclick="doSetNewPassword()">Save &amp; log in</button>
+        <div class="auth-error" id="resetError"></div>
       </div>
     </div>
 

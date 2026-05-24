@@ -4,8 +4,10 @@ export async function doLogin(onSuccess: () => void): Promise<void> {
   const email = (document.getElementById('authEmail') as HTMLInputElement).value.trim();
   const pass = (document.getElementById('authPass') as HTMLInputElement).value;
   const errEl = document.getElementById('authError')!;
+  const okEl = document.getElementById('authOk');
   const btn = document.getElementById('authBtn') as HTMLButtonElement;
   errEl.textContent = '';
+  if (okEl) okEl.textContent = '';
   if (!email || !pass) {
     errEl.textContent = 'Please enter email and password';
     return;
@@ -19,6 +21,70 @@ export async function doLogin(onSuccess: () => void): Promise<void> {
     errEl.textContent = error.message;
     return;
   }
+  onSuccess();
+}
+
+export function inRecoveryFlow(): boolean {
+  return window.location.hash.includes('type=recovery');
+}
+
+export function setupRecoveryDetection(showReset: () => void): void {
+  // Belt-and-suspenders: PASSWORD_RECOVERY can fire before our hash check runs.
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY' || inRecoveryFlow()) {
+      showReset();
+    }
+  });
+}
+
+export async function doForgotPassword(e?: Event): Promise<void> {
+  if (e && e.preventDefault) e.preventDefault();
+  const email = (document.getElementById('authEmail') as HTMLInputElement).value.trim();
+  const errEl = document.getElementById('authError')!;
+  const okEl = document.getElementById('authOk')!;
+  errEl.textContent = '';
+  okEl.textContent = '';
+  if (!email) {
+    errEl.textContent = 'Enter your email above first, then tap Forgot.';
+    return;
+  }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  if (error) {
+    errEl.textContent = error.message;
+    return;
+  }
+  okEl.textContent = 'Reset link sent. Check your email (also Spam) and tap the link.';
+}
+
+export async function doSetNewPassword(onSuccess: () => void): Promise<void> {
+  const p1 = (document.getElementById('resetPass') as HTMLInputElement).value;
+  const p2 = (document.getElementById('resetPass2') as HTMLInputElement).value;
+  const errEl = document.getElementById('resetError')!;
+  const btn = document.getElementById('resetBtn') as HTMLButtonElement;
+  errEl.textContent = '';
+  if (!p1 || p1.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    return;
+  }
+  if (p1 !== p2) {
+    errEl.textContent = 'Passwords do not match.';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false;
+  btn.textContent = 'Save & log in';
+  if (error) {
+    errEl.textContent = error.message;
+    return;
+  }
+  // Clear the recovery fragment so a refresh doesn't bounce back here.
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  const rs = document.getElementById('resetScreen');
+  if (rs) rs.style.display = 'none';
   onSuccess();
 }
 

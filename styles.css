@@ -121,6 +121,23 @@ textarea {
   margin-top: 0.75rem;
   min-height: 1.2em;
 }
+.auth-link {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.auth-link:hover {
+  color: var(--accent);
+}
+.auth-ok {
+  color: var(--accent);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  min-height: 1.2em;
+}
 
 /* ── App Shell ── */
 .app {

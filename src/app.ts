@@ -24,7 +24,16 @@ import {
   setGlobalSearch,
   resetAllFilters,
 } from './state';
-import { doLogin as _doLogin, doLogout, checkSession as _checkSession, updateHeader } from './auth';
+import {
+  doLogin as _doLogin,
+  doLogout,
+  checkSession as _checkSession,
+  updateHeader,
+  doForgotPassword,
+  doSetNewPassword as _doSetNewPassword,
+  inRecoveryFlow,
+  setupRecoveryDetection,
+} from './auth';
 import { showToast, toastUndo, buildSearchBar } from './ui';
 import {
   buildWeeklyPlanning,
@@ -174,6 +183,13 @@ function doLogin() {
 }
 function checkSession() {
   return _checkSession(showApp);
+}
+function showReset() {
+  document.getElementById('authScreen')!.style.display = 'none';
+  document.getElementById('resetScreen')!.style.display = 'flex';
+}
+function doSetNewPassword() {
+  return _doSetNewPassword(showApp);
 }
 
 async function showApp() {
@@ -588,6 +604,8 @@ document.addEventListener('keydown', function (e) {
 Object.assign(window, {
   doLogin,
   doLogout,
+  doForgotPassword,
+  doSetNewPassword,
   toggleLowCapacity,
   refreshData,
   pickQAEnergy,
@@ -655,4 +673,9 @@ setTaskActionsCallbacks(renderCurrentTab);
 setQuickAddCallbacks(renderCurrentTab);
 initModalListeners();
 initQuickAddListeners();
-checkSession();
+setupRecoveryDetection(showReset);
+if (inRecoveryFlow()) {
+  showReset();
+} else {
+  checkSession();
+}
